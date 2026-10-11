@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../api";
 import {
   Alert,
   Box,
@@ -17,8 +17,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-
-const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/experiences";
 
 const emptyForm = {
   company: "",
@@ -51,7 +49,7 @@ function AdminExperience() {
     try {
       setLoading(true);
 
-      const response = await axios.get(API_URL);
+      const response = await api.get("/api/experiences");
 
       const data = response.data?.experiences || [];
 
@@ -195,17 +193,9 @@ function AdminExperience() {
       };
 
       if (editingId) {
-        await axios.put(
-          `${API_URL}/${editingId}`,
-          payload,
-          config
-        );
+        await api.put(`/api/experiences/${editingId}`, payload);
       } else {
-        await axios.post(
-          API_URL,
-          payload,
-          config
-        );
+        await api.post("/api/experiences", payload);
       }
 
       await getExperiences();
@@ -242,22 +232,7 @@ function AdminExperience() {
     if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem("adminToken");
-
-      if (!token) {
-        setMessage({
-          type: "error",
-          text: "Admin session expired. Please login again.",
-        });
-
-        return;
-      }
-
-      await axios.delete(`${API_URL}/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await api.delete(`/api/experiences/${id}`);
 
       await getExperiences();
 

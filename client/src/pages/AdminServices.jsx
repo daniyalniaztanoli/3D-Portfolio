@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api, { API_URL } from "../api";
 import {
   Alert,
   Box,
@@ -17,9 +17,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-
-const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/services";
-const SERVER_URL = "https://hearty-friendship-production-fec3.up.railway.app";
 
 const emptyForm = {
   title: "",
@@ -52,7 +49,7 @@ function AdminServices() {
     try {
       setLoading(true);
 
-      const response = await axios.get(API_URL);
+      const response = await api.get("/api/services");
 
       const data = response.data?.services || [];
 
@@ -132,7 +129,7 @@ function AdminServices() {
       service.image
         ? service.image.startsWith("http")
           ? service.image
-          : `${SERVER_URL}${service.image}`
+          : `${API_URL}${service.image}`
         : ""
     );
 
@@ -243,17 +240,9 @@ function AdminServices() {
       };
 
       if (editingId) {
-        await axios.put(
-          `${API_URL}/${editingId}`,
-          formData,
-          config
-        );
+        await api.put(`/api/services/${editingId}`, formData);
       } else {
-        await axios.post(
-          API_URL,
-          formData,
-          config
-        );
+        await api.post("/api/services", formData);
       }
 
       await getServices();
@@ -293,22 +282,7 @@ function AdminServices() {
     if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem("adminToken");
-
-      if (!token) {
-        setMessage({
-          type: "error",
-          text: "Admin session expired. Please login again.",
-        });
-
-        return;
-      }
-
-      await axios.delete(`${API_URL}/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await api.delete(`/api/services/${id}`);
 
       await getServices();
 
@@ -333,7 +307,7 @@ function AdminServices() {
 
     return image.startsWith("http")
       ? image
-      : `${SERVER_URL}${image}`;
+      : `${API_URL}${image}`;
   };
 
   return (

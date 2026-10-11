@@ -1,6 +1,6 @@
 
 import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
+import api, { API_URL } from "../api";
 
 import {
   Alert,
@@ -19,9 +19,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-
-const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/certificates";
-const SERVER_URL = "https://hearty-friendship-production-fec3.up.railway.app";
 
 const emptyForm = {
   title: "",
@@ -53,7 +50,7 @@ function AdminCertificates() {
   const getImageUrl = (path) => {
     if (!path) return "";
     if (path.startsWith("http")) return path;
-    return `${SERVER_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+    return `${API_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   };
 
   // Backend se certificates load karo.
@@ -63,7 +60,7 @@ function AdminCertificates() {
       setLoading(true);
       setError("");
 
-      const response = await axios.get(API_URL);
+      const response = await api.get("/api/certificates");
 
       if (response.data?.success) {
         setCertificates(response.data.certificates || []);
@@ -199,10 +196,10 @@ function AdminCertificates() {
       };
 
       if (editingId) {
-        await axios.put(`${API_URL}/${editingId}`, data, config);
+        await api.put(`/api/certificates/${editingId}`, data);
         setSuccess("Certificate successfully update ho gaya.");
       } else {
-        await axios.post(API_URL, data, config);
+        await api.post("/api/certificates", data);
         setSuccess("Certificate successfully add ho gaya.");
       }
 
@@ -221,8 +218,7 @@ function AdminCertificates() {
       setSaving(false);
     }
   };
-
-  const handleDelete = async (id) => {
+const handleDelete = async (id) => {
     if (!getToken()) {
       setError("Session expire ho gaya hai. Dobara login karo.");
       return;
@@ -239,11 +235,7 @@ function AdminCertificates() {
       setError("");
       setSuccess("");
 
-      await axios.delete(`${API_URL}/${id}`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      await api.delete(`/api/certificates/${id}`);
 
       setCertificates((previous) =>
         previous.filter((item) => item._id !== id)
@@ -252,6 +244,7 @@ function AdminCertificates() {
       setSuccess("Certificate delete ho gaya.");
     } catch (err) {
       console.error("Delete certificate error:", err);
+
       setError(
         err.response?.data?.message ||
           "Certificate delete nahi ho saka."

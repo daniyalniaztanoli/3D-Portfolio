@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api, { API_URL } from "../api";
 
 function AdminProjects() {
   const [projects, setProjects] = useState([]);
@@ -30,9 +30,7 @@ function AdminProjects() {
 
   const fetchProjects = async () => {
     try {
-      const response = await axios.get(
-        "https://hearty-friendship-production-fec3.up.railway.app/api/projects"
-      );
+      const response = await api.get("/api/projects");
 
       setProjects(response.data.projects);
     } catch (error) {
@@ -145,15 +143,7 @@ function AdminProjects() {
       // =========================
 
       if (editingId) {
-        await axios.put(
-          `https://hearty-friendship-production-fec3.up.railway.app/api/projects/${editingId}`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        await api.put(`/api/projects/${editingId}`, formData);
 
         setMessage("Project updated successfully ✅");
       }
@@ -163,15 +153,7 @@ function AdminProjects() {
       // =========================
 
       else {
-        await axios.post(
-          "https://hearty-friendship-production-fec3.up.railway.app/api/projects",
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        await api.post("/api/projects", formData);
 
         setMessage("Project added successfully ✅");
       }
@@ -215,9 +197,7 @@ function AdminProjects() {
     setImageFile(null);
 
     if (project.image) {
-      setImagePreview(
-        `https://hearty-friendship-production-fec3.up.railway.app${project.image}`
-      );
+      setImagePreview(`${API_URL}${project.image}`);
     } else {
       setImagePreview("");
     }
@@ -250,16 +230,7 @@ function AdminProjects() {
       setDeletingId(projectId);
       setMessage("");
 
-      const token = localStorage.getItem("adminToken");
-
-      await axios.delete(
-        `https://hearty-friendship-production-fec3.up.railway.app/api/projects/${projectId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await api.delete(`/api/projects/${projectId}`);
 
       setMessage("Project deleted successfully ✅");
 
@@ -569,7 +540,7 @@ function AdminProjects() {
 
             {project.image && (
               <img
-                src={`https://hearty-friendship-production-fec3.up.railway.app${project.image}`}
+                src={`${API_URL}${project.image}`}
                 alt={project.title}
                 style={{
                   width: "250px",

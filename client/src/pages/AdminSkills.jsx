@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../api";
 import {
   Alert,
   Box,
@@ -17,8 +17,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-
-const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/skills";
 
 const emptyForm = {
   name: "",
@@ -47,7 +45,7 @@ function AdminSkills() {
     try {
       setLoading(true);
 
-      const response = await axios.get(API_URL);
+      const response = await api.get("/api/skills");
 
       const data = response.data?.skills || [];
 
@@ -165,17 +163,9 @@ function AdminSkills() {
       };
 
       if (editingId) {
-        await axios.put(
-          `${API_URL}/${editingId}`,
-          payload,
-          config
-        );
+        await api.put(`/api/skills/${editingId}`, payload);
       } else {
-        await axios.post(
-          API_URL,
-          payload,
-          config
-        );
+        await api.post("/api/skills", payload);
       }
 
       await getSkills();
@@ -212,22 +202,7 @@ function AdminSkills() {
     if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem("adminToken");
-
-      if (!token) {
-        setMessage({
-          type: "error",
-          text: "Admin session expired. Please login again.",
-        });
-
-        return;
-      }
-
-      await axios.delete(`${API_URL}/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await api.delete(`/api/skills/${id}`);
 
       await getSkills();
 

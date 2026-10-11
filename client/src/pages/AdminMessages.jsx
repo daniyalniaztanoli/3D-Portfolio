@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../api";
 import {
   Box,
   Button,
@@ -13,8 +13,6 @@ import {
   Typography,
 } from "@mui/material";
 
-const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/messages";
-
 export default function AdminMessages() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,23 +23,12 @@ export default function AdminMessages() {
 
   const [deleteId, setDeleteId] = useState(null);
 
-  const token = localStorage.getItem("adminToken");
-
-  const authConfig = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
-
   const fetchMessages = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const response = await axios.get(
-        API_URL,
-        authConfig
-      );
+      const response = await api.get("/api/messages");
 
       console.log(
         "Messages API Response:",
@@ -70,11 +57,7 @@ export default function AdminMessages() {
 
   const markAsRead = async (id) => {
     try {
-      await axios.put(
-        `${API_URL}/${id}`,
-        { status: "read" },
-        authConfig
-      );
+      await api.put(`/api/messages/${id}`, { status: "read" });
 
       setMessages((prev) =>
         prev.map((message) =>
@@ -93,11 +76,7 @@ export default function AdminMessages() {
 
   const markAsUnread = async (id) => {
     try {
-      await axios.put(
-        `${API_URL}/${id}`,
-        { status: "unread" },
-        authConfig
-      );
+      await api.put(`/api/messages/${id}`, { status: "unread" });
 
       setMessages((prev) =>
         prev.map((message) =>
@@ -118,10 +97,7 @@ export default function AdminMessages() {
     if (!deleteId) return;
 
     try {
-      await axios.delete(
-        `${API_URL}/${deleteId}`,
-        authConfig
-      );
+      await api.delete(`/api/messages/${deleteId}`);
 
       setMessages((prev) =>
         prev.filter(

@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api, { API_URL } from "../api";
 
 import {
   Alert,
@@ -15,9 +15,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-
-const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/profile";
-const SERVER_URL = "https://hearty-friendship-production-fec3.up.railway.app";
 
 const initialForm = {
   name: "",
@@ -42,19 +39,17 @@ const AdminProfile = () => {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("success");
 
-  const token = localStorage.getItem("adminToken");
-
   const getFileUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
 
-    return `${SERVER_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+    return `${API_URL}${url.startsWith("/") ? "" : "/"}${url}`;
   };
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await axios.get(API_URL);
+        const response = await api.get("/api/profile");
         const data = response.data?.profile || response.data;
 
         if (data) {
@@ -139,12 +134,6 @@ const AdminProfile = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!token) {
-      setMessage("Admin token nahi mila. Dobara login karo.");
-      setMessageType("error");
-      return;
-    }
-
     try {
       setSaving(true);
       setMessage("");
@@ -169,11 +158,7 @@ const AdminProfile = () => {
         formData.append("resume", resumeFile);
       }
 
-      const response = await axios.put(API_URL, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await api.put("/api/profile", formData);
 
       const data = response.data?.profile || response.data;
 
