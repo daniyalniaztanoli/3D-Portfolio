@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -12,12 +13,21 @@ import {
 } from "@mui/material";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, Sparkles, Stars } from "@react-three/drei";
+import { Sparkles, Stars } from "@react-three/drei";
 import * as THREE from "three";
 
-/* =========================================================
-   3D ROCKET
-========================================================= */
+// ============================================
+// API CONFIGURATION
+// ============================================
+
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000"
+).replace(/\/$/, "");
+
+// ============================================
+// 3D ROCKET
+// ============================================
 
 function RocketModel() {
   const rocketRef = useRef();
@@ -29,33 +39,24 @@ function RocketModel() {
 
     const time = state.clock.getElapsedTime();
 
-    // Move rocket from left to right
     rocketRef.current.position.x += delta * 2.7;
+    rocketRef.current.position.y = Math.sin(time * 1.4) * 0.45;
 
-    // Floating flight movement
-    rocketRef.current.position.y =
-      Math.sin(time * 1.4) * 0.45;
-
-    // Slight banking movement
     rocketRef.current.rotation.z =
       -Math.PI / 2 + Math.sin(time * 2) * 0.035;
 
-    // Reset rocket after leaving screen
     if (rocketRef.current.position.x > 13) {
       rocketRef.current.position.x = -13;
     }
 
-    // Animated flame
     if (flameRef.current) {
-      const flameScale =
+      flameRef.current.scale.y =
         0.9 + Math.sin(time * 18) * 0.15;
 
-      flameRef.current.scale.y = flameScale;
       flameRef.current.scale.x =
         0.9 + Math.sin(time * 14) * 0.08;
     }
 
-    // Flame glow
     if (glowRef.current) {
       glowRef.current.scale.setScalar(
         1 + Math.sin(time * 12) * 0.12
@@ -70,13 +71,8 @@ function RocketModel() {
       rotation={[0, 0, -Math.PI / 2]}
       scale={1.25}
     >
-      {/* =========================================
-          ROCKET BODY
-      ========================================= */}
-
       <mesh>
         <cylinderGeometry args={[0.32, 0.4, 1.7, 32]} />
-
         <meshStandardMaterial
           color="#E5E7EB"
           metalness={0.85}
@@ -84,13 +80,8 @@ function RocketModel() {
         />
       </mesh>
 
-      {/* =========================================
-          NOSE
-      ========================================= */}
-
       <mesh position={[0, 1.08, 0]}>
         <coneGeometry args={[0.32, 0.55, 32]} />
-
         <meshStandardMaterial
           color="#7C3AED"
           metalness={0.7}
@@ -98,15 +89,8 @@ function RocketModel() {
         />
       </mesh>
 
-      {/* =========================================
-          NOSE GLOW RING
-      ========================================= */}
-
       <mesh position={[0, 0.82, 0]}>
-        <torusGeometry
-          args={[0.27, 0.035, 12, 32]}
-        />
-
+        <torusGeometry args={[0.27, 0.035, 12, 32]} />
         <meshStandardMaterial
           color="#06B6D4"
           emissive="#06B6D4"
@@ -114,16 +98,11 @@ function RocketModel() {
         />
       </mesh>
 
-      {/* =========================================
-          ROCKET WINDOW
-      ========================================= */}
-
       <mesh
         position={[0, 0.35, 0.32]}
         rotation={[Math.PI / 2, 0, 0]}
       >
         <circleGeometry args={[0.17, 32]} />
-
         <meshStandardMaterial
           color="#06131A"
           metalness={0.9}
@@ -133,15 +112,11 @@ function RocketModel() {
         />
       </mesh>
 
-      {/* Window outer ring */}
       <mesh
         position={[0, 0.35, 0.335]}
         rotation={[Math.PI / 2, 0, 0]}
       >
-        <torusGeometry
-          args={[0.18, 0.025, 12, 32]}
-        />
-
+        <torusGeometry args={[0.18, 0.025, 12, 32]} />
         <meshStandardMaterial
           color="#06B6D4"
           emissive="#06B6D4"
@@ -149,33 +124,23 @@ function RocketModel() {
         />
       </mesh>
 
-      {/* =========================================
-          LEFT FIN
-      ========================================= */}
-
       <mesh
         position={[0, -0.35, -0.32]}
         rotation={[0, 0, -0.35]}
       >
         <boxGeometry args={[0.55, 0.7, 0.12]} />
-
         <meshStandardMaterial
           color="#7C3AED"
           metalness={0.7}
           roughness={0.25}
         />
       </mesh>
-
-      {/* =========================================
-          RIGHT FIN
-      ========================================= */}
 
       <mesh
         position={[0, -0.35, 0.32]}
         rotation={[0, 0, 0.35]}
       >
         <boxGeometry args={[0.55, 0.7, 0.12]} />
-
         <meshStandardMaterial
           color="#7C3AED"
           metalness={0.7}
@@ -183,13 +148,8 @@ function RocketModel() {
         />
       </mesh>
 
-      {/* =========================================
-          ENGINE
-      ========================================= */}
-
       <mesh position={[0, -0.9, 0]}>
         <cylinderGeometry args={[0.22, 0.28, 0.18, 24]} />
-
         <meshStandardMaterial
           color="#18181B"
           metalness={0.9}
@@ -197,16 +157,8 @@ function RocketModel() {
         />
       </mesh>
 
-      {/* =========================================
-          ENGINE FLAME
-      ========================================= */}
-
-      <mesh
-        ref={flameRef}
-        position={[0, -1.35, 0]}
-      >
+      <mesh ref={flameRef} position={[0, -1.35, 0]}>
         <coneGeometry args={[0.2, 0.9, 24]} />
-
         <meshStandardMaterial
           color="#06B6D4"
           emissive="#06B6D4"
@@ -216,10 +168,8 @@ function RocketModel() {
         />
       </mesh>
 
-      {/* Inner flame */}
       <mesh position={[0, -1.38, 0]}>
         <coneGeometry args={[0.11, 0.65, 20]} />
-
         <meshStandardMaterial
           color="#FFFFFF"
           emissive="#FFFFFF"
@@ -229,16 +179,8 @@ function RocketModel() {
         />
       </mesh>
 
-      {/* =========================================
-          FLAME GLOW
-      ========================================= */}
-
-      <mesh
-        ref={glowRef}
-        position={[0, -1.3, 0]}
-      >
+      <mesh ref={glowRef} position={[0, -1.3, 0]}>
         <sphereGeometry args={[0.3, 20, 20]} />
-
         <meshBasicMaterial
           color="#06B6D4"
           transparent
@@ -250,9 +192,9 @@ function RocketModel() {
   );
 }
 
-/* =========================================================
-   SECOND SMALL ROCKET
-========================================================= */
+// ============================================
+// SECOND SMALL ROCKET
+// ============================================
 
 function SmallRocket() {
   const rocketRef = useRef();
@@ -263,7 +205,6 @@ function SmallRocket() {
     const time = state.clock.getElapsedTime();
 
     rocketRef.current.position.x += delta * 1.5;
-
     rocketRef.current.position.y =
       Math.sin(time * 1.1) * 0.35 - 2.4;
 
@@ -284,7 +225,6 @@ function SmallRocket() {
     >
       <mesh>
         <cylinderGeometry args={[0.3, 0.38, 1.5, 24]} />
-
         <meshStandardMaterial
           color="#A1A1AA"
           metalness={0.8}
@@ -294,7 +234,6 @@ function SmallRocket() {
 
       <mesh position={[0, 0.98, 0]}>
         <coneGeometry args={[0.3, 0.5, 24]} />
-
         <meshStandardMaterial
           color="#06B6D4"
           emissive="#06B6D4"
@@ -304,7 +243,6 @@ function SmallRocket() {
 
       <mesh position={[0, -1, 0]}>
         <coneGeometry args={[0.16, 0.65, 20]} />
-
         <meshStandardMaterial
           color="#7C3AED"
           emissive="#7C3AED"
@@ -317,9 +255,9 @@ function SmallRocket() {
   );
 }
 
-/* =========================================================
-   3D SPACE SCENE
-========================================================= */
+// ============================================
+// SPACE SCENE
+// ============================================
 
 function SpaceScene() {
   return (
@@ -357,15 +295,14 @@ function SpaceScene() {
       />
 
       <RocketModel />
-
       <SmallRocket />
     </>
   );
 }
 
-/* =========================================================
-   LOGIN PAGE
-========================================================= */
+// ============================================
+// ADMIN LOGIN PAGE
+// ============================================
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -379,18 +316,17 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
 
   const handleChange = (event) => {
-    setForm({
-      ...form,
+    setForm((previous) => ({
+      ...previous,
       [event.target.name]: event.target.value,
-    });
+    }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
     setError("");
 
-    if (!form.email || !form.password) {
+    if (!form.email.trim() || !form.password) {
       setError("Please enter email and password.");
       return;
     }
@@ -399,8 +335,16 @@ export default function AdminLogin() {
       setLoading(true);
 
       const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
-        form
+        `${API_URL}/api/auth/login`,
+        {
+          email: form.email.trim(),
+          password: form.password,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
       );
 
       if (response.data?.token) {
@@ -416,15 +360,27 @@ export default function AdminLogin() {
 
         navigate("/admin/dashboard");
       } else {
-        setError("Login failed. Please try again.");
+        setError(
+          response.data?.message ||
+            "Login failed. Please try again."
+        );
       }
     } catch (err) {
-      console.error("Login error:", err);
-
-      setError(
-        err.response?.data?.message ||
-          "Invalid email or password."
+      console.error(
+        "Login error:",
+        err.response?.data || err.message
       );
+
+      if (!err.response) {
+        setError(
+          "Cannot connect to the server. Please try again."
+        );
+      } else {
+        setError(
+          err.response.data?.message ||
+            "Login failed. Please check your credentials."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -437,80 +393,41 @@ export default function AdminLogin() {
         width: "100%",
         position: "relative",
         overflow: "hidden",
-
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-
         background:
           "radial-gradient(circle at center, #101020 0%, #07070D 45%, #030305 100%)",
-
         color: "#fff",
       }}
     >
-      {/* =========================================
-          PURPLE BACKGROUND GLOW
-      ========================================= */}
-
       <Box
         sx={{
           position: "absolute",
-          width: {
-            xs: 280,
-            md: 600,
-          },
-          height: {
-            xs: 280,
-            md: 600,
-          },
-
+          width: { xs: 280, md: 600 },
+          height: { xs: 280, md: 600 },
           borderRadius: "50%",
-
-          background:
-            "rgba(124,58,237,0.13)",
-
+          background: "rgba(124,58,237,0.13)",
           filter: "blur(120px)",
-
           top: "-180px",
           left: "-180px",
-
           pointerEvents: "none",
         }}
       />
-
-      {/* =========================================
-          CYAN BACKGROUND GLOW
-      ========================================= */}
 
       <Box
         sx={{
           position: "absolute",
-          width: {
-            xs: 250,
-            md: 500,
-          },
-          height: {
-            xs: 250,
-            md: 500,
-          },
-
+          width: { xs: 250, md: 500 },
+          height: { xs: 250, md: 500 },
           borderRadius: "50%",
-
-          background:
-            "rgba(6,182,212,0.09)",
-
+          background: "rgba(6,182,212,0.09)",
           filter: "blur(120px)",
-
           bottom: "-180px",
           right: "-180px",
-
           pointerEvents: "none",
         }}
       />
-
-      {/* =========================================
-          3D SPACE CANVAS
-      ========================================= */}
 
       <Box
         sx={{
@@ -531,40 +448,19 @@ export default function AdminLogin() {
         </Canvas>
       </Box>
 
-      {/* =========================================
-          TOP LOGO
-      ========================================= */}
-
       <Typography
         onClick={() => navigate("/")}
         sx={{
           position: "absolute",
-
-          top: {
-            xs: 20,
-            md: 30,
-          },
-
-          left: {
-            xs: 20,
-            md: 35,
-          },
-
+          top: { xs: 20, md: 30 },
+          left: { xs: 20, md: 35 },
           zIndex: 10,
-
-          fontSize: {
-            xs: "1.5rem",
-            md: "1.8rem",
-          },
-
+          fontSize: { xs: "1.5rem", md: "1.8rem" },
           fontWeight: 800,
           letterSpacing: "-0.04em",
-
           cursor: "pointer",
-
           background:
             "linear-gradient(90deg, #7C3AED, #06B6D4)",
-
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
         }}
@@ -572,71 +468,38 @@ export default function AdminLogin() {
         Daniyal.
       </Typography>
 
-      {/* =========================================
-          CENTER LOGIN CARD
-      ========================================= */}
-
       <Paper
         elevation={0}
         sx={{
           position: "relative",
           zIndex: 5,
-
           width: {
             xs: "calc(100% - 32px)",
             sm: 430,
           },
-
-          p: {
-            xs: 3,
-            sm: 4,
-          },
-
-          borderRadius: {
-            xs: 3,
-            sm: 4,
-          },
-
-          background:
-            "rgba(10,10,15,0.82)",
-
+          p: { xs: 3, sm: 4 },
+          borderRadius: { xs: 3, sm: 4 },
+          background: "rgba(10,10,15,0.82)",
           backdropFilter: "blur(25px)",
-
-          border:
-            "1px solid rgba(255,255,255,0.12)",
-
+          border: "1px solid rgba(255,255,255,0.12)",
           boxShadow:
             "0 30px 100px rgba(0,0,0,0.7), 0 0 70px rgba(124,58,237,0.12)",
-
           overflow: "hidden",
         }}
       >
-        {/* Card Glow */}
-
         <Box
           sx={{
             position: "absolute",
-
             width: 180,
             height: 180,
-
             borderRadius: "50%",
-
-            background:
-              "rgba(124,58,237,0.13)",
-
+            background: "rgba(124,58,237,0.13)",
             filter: "blur(70px)",
-
             top: -100,
             right: -80,
-
             pointerEvents: "none",
           }}
         />
-
-        {/* =========================================
-            HEADER
-        ========================================= */}
 
         <Box
           sx={{
@@ -648,15 +511,10 @@ export default function AdminLogin() {
           <Typography
             sx={{
               color: "#06B6D4",
-
               fontSize: "0.68rem",
-
               fontWeight: 700,
-
               letterSpacing: "0.18em",
-
               textTransform: "uppercase",
-
               mb: 1.5,
             }}
           >
@@ -666,15 +524,9 @@ export default function AdminLogin() {
           <Typography
             component="h1"
             sx={{
-              fontSize: {
-                xs: "2.2rem",
-                sm: "2.5rem",
-              },
-
+              fontSize: { xs: "2.2rem", sm: "2.5rem" },
               lineHeight: 1,
-
               fontWeight: 800,
-
               letterSpacing: "-0.05em",
             }}
           >
@@ -684,12 +536,9 @@ export default function AdminLogin() {
               component="span"
               sx={{
                 display: "block",
-
                 background:
                   "linear-gradient(90deg, #7C3AED, #06B6D4)",
-
                 WebkitBackgroundClip: "text",
-
                 WebkitTextFillColor: "transparent",
               }}
             >
@@ -700,9 +549,7 @@ export default function AdminLogin() {
           <Typography
             sx={{
               color: "#71717A",
-
               fontSize: "0.82rem",
-
               mt: 1.5,
             }}
           >
@@ -710,34 +557,23 @@ export default function AdminLogin() {
           </Typography>
         </Box>
 
-        {/* =========================================
-            ERROR
-        ========================================= */}
-
         {error && (
           <Box
+            role="alert"
             sx={{
               position: "relative",
-
               mb: 2.5,
-
               p: 1.5,
-
               borderRadius: 2,
-
               border:
                 "1px solid rgba(248,113,113,0.3)",
-
-              background:
-                "rgba(248,113,113,0.06)",
+              background: "rgba(248,113,113,0.06)",
             }}
           >
             <Typography
               sx={{
                 color: "#F87171",
-
                 fontSize: "0.78rem",
-
                 textAlign: "center",
               }}
             >
@@ -746,25 +582,16 @@ export default function AdminLogin() {
           </Box>
         )}
 
-        {/* =========================================
-            LOGIN FORM
-        ========================================= */}
-
         <Box
           component="form"
           onSubmit={handleSubmit}
-          sx={{
-            position: "relative",
-          }}
+          sx={{ position: "relative" }}
         >
           <Typography
             sx={{
               color: "#D4D4D8",
-
               fontSize: "0.78rem",
-
               fontWeight: 600,
-
               mb: 0.8,
             }}
           >
@@ -775,37 +602,28 @@ export default function AdminLogin() {
             fullWidth
             name="email"
             type="email"
+            autoComplete="username"
             placeholder="admin@example.com"
             value={form.email}
             onChange={handleChange}
             disabled={loading}
             sx={{
               mb: 2.5,
-
               "& .MuiOutlinedInput-root": {
                 color: "#fff",
-
-                background:
-                  "rgba(255,255,255,0.035)",
-
+                background: "rgba(255,255,255,0.035)",
                 borderRadius: 2,
-
                 "& fieldset": {
-                  borderColor:
-                    "rgba(255,255,255,0.1)",
+                  borderColor: "rgba(255,255,255,0.1)",
                 },
-
                 "&:hover fieldset": {
-                  borderColor:
-                    "rgba(124,58,237,0.5)",
+                  borderColor: "rgba(124,58,237,0.5)",
                 },
-
                 "&.Mui-focused fieldset": {
                   borderColor: "#7C3AED",
                   borderWidth: "1px",
                 },
               },
-
               "& input": {
                 fontSize: "0.9rem",
               },
@@ -815,11 +633,8 @@ export default function AdminLogin() {
           <Typography
             sx={{
               color: "#D4D4D8",
-
               fontSize: "0.78rem",
-
               fontWeight: 600,
-
               mb: 0.8,
             }}
           >
@@ -830,37 +645,28 @@ export default function AdminLogin() {
             fullWidth
             name="password"
             type="password"
+            autoComplete="current-password"
             placeholder="Enter your password"
             value={form.password}
             onChange={handleChange}
             disabled={loading}
             sx={{
               mb: 3,
-
               "& .MuiOutlinedInput-root": {
                 color: "#fff",
-
-                background:
-                  "rgba(255,255,255,0.035)",
-
+                background: "rgba(255,255,255,0.035)",
                 borderRadius: 2,
-
                 "& fieldset": {
-                  borderColor:
-                    "rgba(255,255,255,0.1)",
+                  borderColor: "rgba(255,255,255,0.1)",
                 },
-
                 "&:hover fieldset": {
-                  borderColor:
-                    "rgba(124,58,237,0.5)",
+                  borderColor: "rgba(124,58,237,0.5)",
                 },
-
                 "&.Mui-focused fieldset": {
                   borderColor: "#7C3AED",
                   borderWidth: "1px",
                 },
               },
-
               "& input": {
                 fontSize: "0.9rem",
               },
@@ -874,39 +680,28 @@ export default function AdminLogin() {
             variant="contained"
             sx={{
               py: 1.4,
-
               borderRadius: 2,
-
               fontSize: "0.9rem",
-
               fontWeight: 700,
-
               background:
                 "linear-gradient(90deg, #7C3AED, #06B6D4)",
-
               boxShadow:
                 "0 10px 30px rgba(124,58,237,0.25)",
-
               "&:hover": {
                 background:
                   "linear-gradient(90deg, #6D28D9, #0891B2)",
-
                 boxShadow:
                   "0 12px 35px rgba(124,58,237,0.4)",
               },
-
               "&:disabled": {
-                background:
-                  "rgba(124,58,237,0.3)",
+                background: "rgba(124,58,237,0.3)",
               },
             }}
           >
             {loading ? (
               <CircularProgress
                 size={22}
-                sx={{
-                  color: "#fff",
-                }}
+                sx={{ color: "#fff" }}
               />
             ) : (
               "Sign In"
@@ -914,25 +709,16 @@ export default function AdminLogin() {
           </Button>
         </Box>
 
-        {/* =========================================
-            BACK BUTTON
-        ========================================= */}
-
         <Button
           fullWidth
           onClick={() => navigate("/")}
           sx={{
             position: "relative",
-
             mt: 2,
-
             color: "#71717A",
-
             fontSize: "0.78rem",
-
             "&:hover": {
               color: "#fff",
-
               background: "transparent",
             },
           }}
@@ -940,48 +726,28 @@ export default function AdminLogin() {
           ← Back to Portfolio
         </Button>
 
-        {/* Bottom Gradient */}
-
         <Box
           sx={{
             height: 2,
-
             width: "45%",
-
             mx: "auto",
-
             mt: 3,
-
             borderRadius: 10,
-
             background:
               "linear-gradient(90deg, #7C3AED, #06B6D4)",
           }}
         />
       </Paper>
 
-      {/* =========================================
-          BOTTOM TEXT
-      ========================================= */}
-
       <Typography
         sx={{
           position: "absolute",
-
-          bottom: {
-            xs: 18,
-            md: 25,
-          },
-
+          bottom: { xs: 18, md: 25 },
           left: 0,
           right: 0,
-
           textAlign: "center",
-
           color: "#3F3F46",
-
           fontSize: "0.68rem",
-
           zIndex: 3,
         }}
       >
