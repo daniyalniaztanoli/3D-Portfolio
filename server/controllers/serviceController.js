@@ -1,5 +1,30 @@
 const Service = require("../models/Service");
 
+// Convert features into a valid array
+const parseFeatures = (value) => {
+  if (value === undefined) return undefined;
+
+  if (Array.isArray(value)) {
+    return value.map((feature) => String(feature).trim()).filter(Boolean);
+  }
+
+  if (typeof value !== "string") {
+    throw new Error("Features must be an array or JSON string");
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) return [];
+
+  const parsed = JSON.parse(trimmed);
+
+  if (!Array.isArray(parsed)) {
+    throw new Error("Features must be a JSON array");
+  }
+
+  return parsed.map((feature) => String(feature).trim()).filter(Boolean);
+};
+
 // GET all services
 const getServices = async (req, res) => {
   try {
@@ -8,14 +33,14 @@ const getServices = async (req, res) => {
       createdAt: -1,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       services,
     });
   } catch (error) {
     console.error("Get Services Error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to get services",
     });
@@ -34,14 +59,14 @@ const getService = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       service,
     });
   } catch (error) {
     console.error("Get Service Error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to get service",
     });
@@ -51,21 +76,32 @@ const getService = async (req, res) => {
 // CREATE service
 const createService = async (req, res) => {
   try {
-    const features = req.body.features
-      ? JSON.parse(req.body.features)
-      : [];
+    const serviceData = { ...req.body };
 
-    const serviceData = {
-      ...req.body,
-      features,
-      image: req.file
-        ? `/uploads/${req.file.filename}`
-        : "",
-    };
+    const features = parseFeatures(req.body.features);
+
+    if (features !== undefined) {
+      serviceData.features = features;
+    }
+
+    if (serviceData.order !== undefined && serviceData.order !== "") {
+      serviceData.order = Number(serviceData.order);
+
+      if (!Number.isFinite(serviceData.order)) {
+        return res.status(400).json({
+          success: false,
+          message: "Order must be a valid number",
+        });
+      }
+    }
+
+    serviceData.image = req.file
+      ? `/uploads/${req.file.filename}`
+      : serviceData.image || "";
 
     const service = await Service.create(serviceData);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Service created successfully",
       service,
@@ -73,10 +109,9 @@ const createService = async (req, res) => {
   } catch (error) {
     console.error("Create Service Error:", error);
 
-    res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Failed to create service",
-      error: error.message,
+      message: error.message || "Failed to create service",
     });
   }
 };
@@ -84,9 +119,7 @@ const createService = async (req, res) => {
 // UPDATE service
 const updateService = async (req, res) => {
   try {
-    const existingService = await Service.findById(
-      req.params.id
-    );
+    const existingService = await Service.findById(req.params.id);
 
     if (!existingService) {
       return res.status(404).json({
@@ -95,31 +128,48 @@ const updateService = async (req, res) => {
       });
     }
 
-    const updateData = {
-      ...req.body,
-    };
+    const updateData = { ...req.body };
 
-    if (req.body.features) {
-      updateData.features = JSON.parse(
-        req.body.features
-      );
+    // Handle features only when provided
+    const features = parseFeatures(req.body.features);
+
+    if (features !== undefined) {
+      updateData.features = features;
     }
 
+    // Convert order from FormData string to number
+    if (updateData.order !== undefined) {
+      if (updateData.order === "") {
+        updateData.order = 0;
+      } else {
+        updateData.order = Number(updateData.order);
+
+        if (!Number.isFinite(updateData.order)) {
+          return res.status(400).json({
+            success: false,
+            message: "Order must be a valid number",
+          });
+        }
+      }
+    }
+
+    // Keep the existing image unless a new one is uploaded
+    delete updateData.image;
+
     if (req.file) {
-      updateData.image =
-        `/uploads/${req.file.filename}`;
+      updateData.image = `/uploads/${req.file.filename}`;
     }
 
     const service = await Service.findByIdAndUpdate(
       req.params.id,
-      updateData,
+      { $set: updateData },
       {
         new: true,
         runValidators: true,
       }
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Service updated successfully",
       service,
@@ -127,9 +177,9 @@ const updateService = async (req, res) => {
   } catch (error) {
     console.error("Update Service Error:", error);
 
-    res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Failed to update service",
+      message: error.message || "Failed to update service",
     });
   }
 };
@@ -137,9 +187,7 @@ const updateService = async (req, res) => {
 // DELETE service
 const deleteService = async (req, res) => {
   try {
-    const service = await Service.findByIdAndDelete(
-      req.params.id
-    );
+    const service = await Service.findByIdAndDelete(req.params.id);
 
     if (!service) {
       return res.status(404).json({
@@ -148,14 +196,14 @@ const deleteService = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Service deleted successfully",
     });
   } catch (error) {
     console.error("Delete Service Error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to delete service",
     });
