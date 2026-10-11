@@ -19,8 +19,11 @@ import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ArrowOutwardRoundedIcon from "@mui/icons-material/ArrowOutwardRounded";
 
-const API_URL = "http://localhost:5000/api/certificates";
-const SERVER_URL = "http://localhost:5000";
+const SERVER_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:5000"
+).replace(/\/$/, "");
+
+const API_URL = `${SERVER_URL}/api/certificates`;
 
 const PURPLE = "#7C3AED";
 const CYAN = "#06B6D4";
