@@ -8,8 +8,11 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 
-const API_URL = "http://localhost:5000/api/educations";
-const SERVER_URL = "http://localhost:5000";
+const SERVER_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:5000"
+).replace(/\/$/, "");
+
+const API_URL = `${SERVER_URL}/api/certificates`;
 
 const headingSize = {
   xs: "2.5rem",
