@@ -12,7 +12,7 @@ import CodeIcon from "@mui/icons-material/Code";
 import StorageIcon from "@mui/icons-material/Storage";
 import BuildIcon from "@mui/icons-material/Build";
 
-const API_URL = "http://localhost:5000/api/skills";
+const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/skills";
 
 const categoryIcons = {
   Frontend: <CodeIcon />,

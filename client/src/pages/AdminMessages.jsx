@@ -13,7 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 
-const API_URL = "http://localhost:5000/api/messages";
+const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/messages";
 
 export default function AdminMessages() {
   const [messages, setMessages] = useState([]);

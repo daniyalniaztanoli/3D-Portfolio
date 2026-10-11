@@ -18,7 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 
-const API_URL = "http://localhost:5000/api/skills";
+const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/skills";
 
 const emptyForm = {
   name: "",

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
-const BASE_URL = "http://localhost:5000";
+const BASE_URL = "https://hearty-friendship-production-fec3.up.railway.app";
 const API_URL = `${BASE_URL}/api/projects`;
 
 const headingSize = {

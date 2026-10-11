@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 
-const API_URL = "http://localhost:5000/api/messages";
+const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/messages";
 
 const inputStyles = {
   "& .MuiOutlinedInput-root": {

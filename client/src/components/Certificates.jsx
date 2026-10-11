@@ -20,7 +20,7 @@ import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ArrowOutwardRoundedIcon from "@mui/icons-material/ArrowOutwardRounded";
 
 const SERVER_URL = (
-  import.meta.env.VITE_API_URL || "http://localhost:5000"
+  import.meta.env.VITE_API_URL || "https://hearty-friendship-production-fec3.up.railway.app"
 ).replace(/\/$/, "");
 
 const API_URL = `${SERVER_URL}/api/certificates`;

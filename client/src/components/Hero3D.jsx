@@ -21,8 +21,8 @@ import {
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import DownloadIcon from "@mui/icons-material/Download";
 
-const API_URL = "http://localhost:5000/api/profile";
-const SERVER_URL = "http://localhost:5000";
+const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/profile";
+const SERVER_URL = "https://hearty-friendship-production-fec3.up.railway.app";
 
 /* =========================================
    CODE TYPEWRITER

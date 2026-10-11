@@ -3,7 +3,7 @@ import axios from "axios";
 import { Box, Chip, Container, Typography } from "@mui/material";
 import { motion } from "framer-motion";
 
-const API_URL = "http://localhost:5000/api/services";
+const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/services";
 
 export default function ServicesSection() {
   const [services, setServices] = useState([]);
@@ -393,7 +393,7 @@ export default function ServicesSection() {
                       src={
                         service.image.startsWith("http")
                           ? service.image
-                          : `http://localhost:5000${service.image}`
+                          : `https://hearty-friendship-production-fec3.up.railway.app${service.image}`
                       }
                       alt={service.title || "Service"}
                       sx={{

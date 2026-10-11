@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+
+import { useEffect, useState, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import api, { API_URL } from "../api";
 
 import {
   AppBar,
@@ -19,14 +20,13 @@ import {
 } from "@mui/material";
 
 import { Canvas, useFrame } from "@react-three/fiber";
+
 import {
   Float,
   OrbitControls,
   Sphere,
   MeshDistortMaterial,
 } from "@react-three/drei";
-
-import * as THREE from "three";
 
 const drawerWidth = 250;
 
@@ -46,72 +46,60 @@ const menuItems = [
 const dashboardCards = [
   {
     title: "Projects",
-    key: "projects",
     description: "Portfolio projects stored in MongoDB.",
     path: "/admin/projects",
     symbol: "P",
   },
   {
     title: "Skills",
-    key: "skills",
     description: "Technical skills available in your portfolio.",
     path: "/admin/skills",
     symbol: "S",
   },
   {
     title: "Experience",
-    key: "experiences",
     description: "Professional experience entries.",
     path: "/admin/experience",
     symbol: "E",
   },
   {
     title: "Education",
-    key: "educations",
     description: "Education records in your portfolio.",
     path: "/admin/education",
     symbol: "ED",
   },
   {
     title: "Services",
-    key: "services",
     description: "Services currently available.",
     path: "/admin/services",
     symbol: "SV",
   },
   {
     title: "Certificates",
-    key: "certificates",
     description: "Manage your achievements and certifications.",
     path: "/admin/certificates",
     symbol: "C",
   },
   {
     title: "Messages",
-    key: "messages",
     description: "Messages received from visitors.",
     path: "/admin/messages",
     symbol: "M",
   },
 ];
 
-/* =========================================================
+/* =========================
    3D ADMIN CORE
-========================================================= */
+========================= */
 
 function RotatingCore() {
-  const meshRef = useState(null)[0];
-
   return (
     <Float
       speed={1.5}
       rotationIntensity={0.6}
       floatIntensity={0.8}
     >
-      <Sphere
-        args={[1.15, 64, 64]}
-        scale={1}
-      >
+      <Sphere args={[1.15, 64, 64]}>
         <MeshDistortMaterial
           color="#7C3AED"
           emissive="#4C1D95"
@@ -123,10 +111,7 @@ function RotatingCore() {
         />
       </Sphere>
 
-      <Sphere
-        args={[1.45, 32, 32]}
-        scale={1}
-      >
+      <Sphere args={[1.45, 32, 32]}>
         <meshBasicMaterial
           color="#06B6D4"
           wireframe
@@ -139,35 +124,23 @@ function RotatingCore() {
 }
 
 function CoreRing() {
-  const ringRef = useState(null)[0];
+  const ringRef = useRef(null);
 
   useFrame((state) => {
-    const time = state.clock.getElapsedTime();
+    if (ringRef.current) {
+      const time = state.clock.elapsedTime;
 
-    if (ringRef) {
-      ringRef.rotation.x =
-        time * 0.3;
-      ringRef.rotation.y =
-        time * 0.4;
+      ringRef.current.rotation.x = time * 0.3;
+      ringRef.current.rotation.y = time * 0.4;
     }
   });
 
   return (
     <mesh
-      rotation={[
-        Math.PI / 2.5,
-        0,
-        0,
-      ]}
+      ref={ringRef}
+      rotation={[Math.PI / 2.5, 0, 0]}
     >
-      <torusGeometry
-        args={[
-          1.7,
-          0.025,
-          16,
-          100,
-        ]}
-      />
+      <torusGeometry args={[1.7, 0.025, 16, 100]} />
 
       <meshBasicMaterial
         color="#06B6D4"
@@ -198,7 +171,6 @@ function Admin3DScene() {
       />
 
       <RotatingCore />
-
       <CoreRing />
 
       <OrbitControls
@@ -211,20 +183,20 @@ function Admin3DScene() {
   );
 }
 
-/* =========================================================
+/* =========================
    MAIN DASHBOARD
-========================================================= */
+========================= */
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
 
   const isMobile = useMediaQuery(
     theme.breakpoints.down("md")
   );
 
-  const [mobileOpen, setMobileOpen] =
-    useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const [stats, setStats] = useState({
     projects: 0,
@@ -237,113 +209,143 @@ export default function AdminDashboard() {
     unreadMessages: 0,
   });
 
-  const [recentProjects, setRecentProjects] =
-    useState([]);
+  const [recentProjects, setRecentProjects] = useState([]);
+  const [recentMessages, setRecentMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [recentMessages, setRecentMessages] =
-    useState([]);
+  let user = {};
 
-  const [loading, setLoading] =
-    useState(true);
+  try {
+    user = JSON.parse(
+      localStorage.getItem("adminUser") || "{}"
+    );
+  } catch {
+    user = {};
+  }
 
-  const [error, setError] =
-    useState("");
+  const token = localStorage.getItem("adminToken");
 
-  const user = JSON.parse(
-    localStorage.getItem("adminUser") ||
-      "{}"
-  );
-
-  const token =
-    localStorage.getItem("adminToken");
-
-  /* =========================================================
+  /* =========================
      FETCH DASHBOARD DATA
-  ========================================================= */
+  ========================= */
 
   useEffect(() => {
-    const fetchDashboardData =
-      async () => {
-        try {
-          setLoading(true);
-          setError("");
+    let cancelled = false;
 
-          const response =
-            await axios.get(
-              "http://localhost:5000/api/dashboard/stats",
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            );
+    const fetchDashboardData = async () => {
+      if (!token) {
+        setLoading(false);
+        setError("Please log in to access the dashboard.");
+        return;
+      }
 
-          if (response.data?.success) {
-            setStats(
-              response.data.stats || {}
-            );
+      try {
+        setLoading(true);
+        setError("");
 
-            setRecentProjects(
-              response.data
-                .recentProjects || []
-            );
+        const response = await api.get(
+          "/api/dashboard/stats"
+        );
 
-            setRecentMessages(
-              response.data
-                .recentMessages || []
-            );
-          }
-        } catch (err) {
-          console.error(
-            "Dashboard error:",
-            err
+        if (cancelled) return;
+
+        if (response.data?.success) {
+          const fetchedStats = response.data.stats || {};
+
+          setStats((previous) => ({
+            ...previous,
+            ...fetchedStats,
+          }));
+
+          setRecentProjects(
+            response.data.recentProjects || []
           );
 
+          setRecentMessages(
+            response.data.recentMessages || []
+          );
+        } else {
           setError(
-            err.response?.data?.message ||
-              "Unable to load dashboard data."
+            response.data?.message ||
+              "Dashboard data could not be loaded."
           );
-        } finally {
+        }
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error("Dashboard error:", err);
+
+        setError(
+          err.response?.data?.message ||
+            (err.response
+              ? `Server error: ${err.response.status}`
+              : "Unable to connect to the backend. Please check the API URL and backend status.")
+        );
+      } finally {
+        if (!cancelled) {
           setLoading(false);
         }
-      };
+      }
+    };
 
-    if (token) {
-      fetchDashboardData();
-    } else {
-      setLoading(false);
-    }
+    fetchDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
-  // Fetch certificate count separately because the certificates GET route is public.
+  /* =========================
+     FETCH CERTIFICATES COUNT
+  ========================= */
+
   useEffect(() => {
-    axios
-      .get("http://localhost:5000/api/certificates")
-      .then((response) => {
-        setStats((previous) => ({
-          ...previous,
-          certificates: response.data?.certificates?.length || 0,
-        }));
-      })
-      .catch((err) => {
-        console.error("Certificate count error:", err);
-      });
+    let cancelled = false;
+
+    const fetchCertificates = async () => {
+      try {
+        const response = await api.get(
+          "/api/certificates"
+        );
+
+        if (cancelled) return;
+
+        const certificates =
+          response.data?.certificates;
+
+        if (Array.isArray(certificates)) {
+          setStats((previous) => ({
+            ...previous,
+            certificates: certificates.length,
+          }));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error(
+            "Certificate count error:",
+            err
+          );
+        }
+      }
+    };
+
+    fetchCertificates();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  /* =========================================================
+  /* =========================
      HELPERS
-  ========================================================= */
+  ========================= */
 
   const handleLogout = () => {
-    localStorage.removeItem(
-      "adminToken"
-    );
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
 
-    localStorage.removeItem(
-      "adminUser"
-    );
-
-    navigate("/admin/login");
+    navigate("/admin/login", { replace: true });
   };
 
   const handleNavigation = (path) => {
@@ -357,33 +359,36 @@ export default function AdminDashboard() {
   const formatDate = (date) => {
     if (!date) return "";
 
-    return new Date(
-      date
-    ).toLocaleDateString(
-      "en-US",
-      {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }
-    );
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "";
+    }
+
+    return parsedDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   const getImageUrl = (image) => {
     if (!image) return "";
 
-    if (
-      image.startsWith("http")
-    ) {
+    if (/^https?:\/\//i.test(image)) {
       return image;
     }
 
-    return `http://localhost:5000${image}`;
+    const normalizedPath = image.startsWith("/")
+      ? image
+      : `/${image}`;
+
+    return `${API_URL}${normalizedPath}`;
   };
 
-  /* =========================================================
+  /* =========================
      SIDEBAR
-  ========================================================= */
+  ========================= */
 
   const sidebarContent = (
     <Box
@@ -395,28 +400,22 @@ export default function AdminDashboard() {
         color: "#fff",
       }}
     >
-      {/* Logo */}
-
       <Box
         sx={{
           px: 3,
           py: 3,
-          borderBottom:
-            "1px solid rgba(255,255,255,0.08)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
         }}
       >
         <Typography
           sx={{
             fontSize: "1.8rem",
             fontWeight: 800,
-            letterSpacing:
-              "-0.04em",
+            letterSpacing: "-0.04em",
             background:
               "linear-gradient(90deg, #7C3AED, #06B6D4)",
-            WebkitBackgroundClip:
-              "text",
-            WebkitTextFillColor:
-              "transparent",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
           }}
         >
           Daniyal.
@@ -427,17 +426,13 @@ export default function AdminDashboard() {
             mt: 0.5,
             fontSize: "0.72rem",
             color: "#71717A",
-            letterSpacing:
-              "0.08em",
-            textTransform:
-              "uppercase",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
           }}
         >
           Admin Portal
         </Typography>
       </Box>
-
-      {/* Navigation */}
 
       <Box
         sx={{
@@ -449,50 +444,31 @@ export default function AdminDashboard() {
       >
         {menuItems.map((item) => {
           const isActive =
-            window.location.pathname ===
-            item.path;
+            location.pathname === item.path;
 
           return (
             <Button
               key={item.path}
               fullWidth
-              onClick={() =>
-                handleNavigation(
-                  item.path
-                )
-              }
+              onClick={() => handleNavigation(item.path)}
               sx={{
-                justifyContent:
-                  "flex-start",
+                justifyContent: "flex-start",
                 textAlign: "left",
                 px: 2,
                 py: 1.25,
                 mb: 0.5,
-
-                color: isActive
-                  ? "#fff"
-                  : "#A1A1AA",
-
-                background:
-                  isActive
-                    ? "linear-gradient(90deg, rgba(124,58,237,0.25), rgba(6,182,212,0.10))"
-                    : "transparent",
-
-                borderLeft:
-                  isActive
-                    ? "3px solid #7C3AED"
-                    : "3px solid transparent",
-
-                borderRadius:
-                  "0 10px 10px 0",
-
+                color: isActive ? "#fff" : "#A1A1AA",
+                background: isActive
+                  ? "linear-gradient(90deg, rgba(124,58,237,0.25), rgba(6,182,212,0.10))"
+                  : "transparent",
+                borderLeft: isActive
+                  ? "3px solid #7C3AED"
+                  : "3px solid transparent",
+                borderRadius: "0 10px 10px 0",
                 fontSize: "0.88rem",
-                fontWeight:
-                  isActive ? 700 : 500,
-
+                fontWeight: isActive ? 700 : 500,
                 "&:hover": {
-                  background:
-                    "rgba(124,58,237,0.12)",
+                  background: "rgba(124,58,237,0.12)",
                   color: "#fff",
                 },
               }}
@@ -503,21 +479,13 @@ export default function AdminDashboard() {
         })}
       </Box>
 
-      {/* User */}
-
       <Box
         sx={{
           p: 2,
-          borderTop:
-            "1px solid rgba(255,255,255,0.08)",
+          borderTop: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        <Box
-          sx={{
-            mb: 1.5,
-            px: 1,
-          }}
-        >
+        <Box sx={{ mb: 1.5, px: 1 }}>
           <Typography
             sx={{
               color: "#fff",
@@ -525,8 +493,7 @@ export default function AdminDashboard() {
               fontWeight: 700,
             }}
           >
-            {user?.name ||
-              "Administrator"}
+            {user?.name || "Administrator"}
           </Typography>
 
           <Typography
@@ -534,12 +501,10 @@ export default function AdminDashboard() {
               color: "#71717A",
               fontSize: "0.72rem",
               mt: 0.3,
-              wordBreak:
-                "break-word",
+              wordBreak: "break-word",
             }}
           >
-            {user?.email ||
-              "admin@portfolio.com"}
+            {user?.email || "admin@portfolio.com"}
           </Typography>
         </Box>
 
@@ -548,15 +513,11 @@ export default function AdminDashboard() {
           onClick={handleLogout}
           sx={{
             color: "#F87171",
-            border:
-              "1px solid rgba(248,113,113,0.2)",
+            border: "1px solid rgba(248,113,113,0.2)",
             py: 1,
-
             "&:hover": {
-              background:
-                "rgba(248,113,113,0.08)",
-              borderColor:
-                "rgba(248,113,113,0.4)",
+              background: "rgba(248,113,113,0.08)",
+              borderColor: "rgba(248,113,113,0.4)",
             },
           }}
         >
@@ -566,9 +527,9 @@ export default function AdminDashboard() {
     </Box>
   );
 
-  /* =========================================================
+  /* =========================
      RETURN
-  ========================================================= */
+  ========================= */
 
   return (
     <Box
@@ -579,58 +540,38 @@ export default function AdminDashboard() {
         overflowX: "hidden",
       }}
     >
-      {/* MOBILE HEADER */}
-
       {isMobile && (
         <AppBar
           position="fixed"
           elevation={0}
           sx={{
-            background:
-              "rgba(5,5,5,0.92)",
-            backdropFilter:
-              "blur(15px)",
-            borderBottom:
-              "1px solid rgba(255,255,255,0.08)",
+            background: "rgba(5,5,5,0.92)",
+            backdropFilter: "blur(15px)",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
           }}
         >
           <Toolbar
             sx={{
-              minHeight:
-                "64px !important",
+              minHeight: "64px !important",
               px: 2,
             }}
           >
             <IconButton
-              onClick={() =>
-                setMobileOpen(true)
-              }
-              sx={{
-                color: "#fff",
-                mr: 1,
-              }}
+              onClick={() => setMobileOpen(true)}
+              sx={{ color: "#fff", mr: 1 }}
+              aria-label="Open navigation menu"
             >
-              <Box
-                sx={{
-                  fontSize:
-                    "1.5rem",
-                }}
-              >
-                ☰
-              </Box>
+              <Box sx={{ fontSize: "1.5rem" }}>☰</Box>
             </IconButton>
 
             <Typography
               sx={{
-                fontSize:
-                  "1.4rem",
+                fontSize: "1.4rem",
                 fontWeight: 800,
                 background:
                   "linear-gradient(90deg, #7C3AED, #06B6D4)",
-                WebkitBackgroundClip:
-                  "text",
-                WebkitTextFillColor:
-                  "transparent",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
               }}
             >
               Daniyal.
@@ -639,56 +580,39 @@ export default function AdminDashboard() {
         </AppBar>
       )}
 
-      {/* DESKTOP SIDEBAR */}
-
       {!isMobile && (
         <Drawer
           variant="permanent"
           sx={{
             width: drawerWidth,
             flexShrink: 0,
-
             "& .MuiDrawer-paper": {
               width: drawerWidth,
-              boxSizing:
-                "border-box",
-
+              boxSizing: "border-box",
               position: "fixed",
               left: 0,
               top: 0,
               height: "100vh",
-
-              borderRight:
-                "1px solid rgba(255,255,255,0.08)",
-
-              background:
-                "#08080B",
+              borderRight: "1px solid rgba(255,255,255,0.08)",
+              background: "#08080B",
             },
           }}
         >
           {sidebarContent}
         </Drawer>
       )}
-
-      {/* MOBILE SIDEBAR */}
 
       {isMobile && (
         <Drawer
           variant="temporary"
           open={mobileOpen}
-          onClose={() =>
-            setMobileOpen(false)
-          }
-          ModalProps={{
-            keepMounted: true,
-          }}
+          onClose={() => setMobileOpen(false)}
+          ModalProps={{ keepMounted: true }}
           sx={{
             "& .MuiDrawer-paper": {
               width: drawerWidth,
-              boxSizing:
-                "border-box",
-              background:
-                "#08080B",
+              boxSizing: "border-box",
+              background: "#08080B",
             },
           }}
         >
@@ -696,18 +620,14 @@ export default function AdminDashboard() {
         </Drawer>
       )}
 
-      {/* MAIN CONTENT */}
-
       <Box
         component="main"
         sx={{
           minWidth: 0,
-
           width: {
             xs: "100%",
             md: `calc(100% - ${drawerWidth}px)`,
           },
-
           ml: {
             xs: 0,
             md: `${drawerWidth}px`,
@@ -717,110 +637,60 @@ export default function AdminDashboard() {
         <Container
           maxWidth="xl"
           sx={{
-            px: {
-              xs: 2,
-              sm: 3,
-              md: 4,
-            },
-
-            pt: {
-              xs: 10,
-              sm: 11,
-              md: 5,
-            },
-
+            px: { xs: 2, sm: 3, md: 4 },
+            pt: { xs: 10, sm: 11, md: 5 },
             pb: 5,
           }}
         >
-          {/* =========================================
-              HERO DASHBOARD
-          ========================================= */}
+          {/* HERO DASHBOARD */}
 
           <Box
             sx={{
               position: "relative",
-              minHeight: {
-                xs: 430,
-                sm: 470,
-                md: 390,
-              },
-
+              minHeight: { xs: 430, sm: 470, md: 390 },
               display: "grid",
-
               gridTemplateColumns: {
                 xs: "1fr",
                 md: "1.1fr 0.9fr",
               },
-
               alignItems: "center",
-
-              borderRadius: {
-                xs: 3,
-                md: 4,
-              },
-
+              borderRadius: { xs: 3, md: 4 },
               overflow: "hidden",
-
-              border:
-                "1px solid rgba(255,255,255,0.08)",
-
+              border: "1px solid rgba(255,255,255,0.08)",
               background:
                 "radial-gradient(circle at 80% 50%, rgba(124,58,237,0.18), transparent 35%), radial-gradient(circle at 90% 20%, rgba(6,182,212,0.12), transparent 30%), rgba(255,255,255,0.025)",
-
               mb: 4,
             }}
           >
-            {/* Glow */}
-
             <Box
               sx={{
                 position: "absolute",
                 width: 300,
                 height: 300,
                 borderRadius: "50%",
-                background:
-                  "rgba(124,58,237,0.15)",
+                background: "rgba(124,58,237,0.15)",
                 filter: "blur(80px)",
-                right: {
-                  xs: "5%",
-                  md: "15%",
-                },
+                right: { xs: "5%", md: "15%" },
                 top: "10%",
-                pointerEvents:
-                  "none",
+                pointerEvents: "none",
               }}
             />
 
-            {/* Hero Text */}
-
             <Box
               sx={{
-                position:
-                  "relative",
+                position: "relative",
                 zIndex: 2,
-
-                px: {
-                  xs: 2.5,
-                  sm: 4,
-                  md: 5,
-                },
-
-                py: {
-                  xs: 3,
-                  md: 4,
-                },
+                px: { xs: 2.5, sm: 4, md: 5 },
+                py: { xs: 3, md: 4 },
               }}
             >
               <Typography
                 sx={{
                   color: "#06B6D4",
-                  fontSize:
-                    "0.7rem",
+                  fontSize: "0.7rem",
                   fontWeight: 700,
-                  letterSpacing:
-                    "0.16em",
-                  textTransform:
-                    "uppercase",
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
                   mb: 1.5,
                 }}
               >
@@ -836,12 +706,9 @@ export default function AdminDashboard() {
                     md: "3.4rem",
                     lg: "3.8rem",
                   },
-
                   lineHeight: 1.05,
                   fontWeight: 800,
-                  letterSpacing:
-                    "-0.04em",
-
+                  letterSpacing: "-0.04em",
                   mb: 1.5,
                 }}
               >
@@ -849,68 +716,44 @@ export default function AdminDashboard() {
                 <Box
                   component="span"
                   sx={{
-                    display:
-                      "block",
-
+                    display: "block",
                     background:
                       "linear-gradient(90deg, #7C3AED, #06B6D4)",
-
-                    WebkitBackgroundClip:
-                      "text",
-
-                    WebkitTextFillColor:
-                      "transparent",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
                   }}
                 >
-                  {user?.name ||
-                    "Daniyal"}
+                  {user?.name || "Daniyal"}
                 </Box>
               </Typography>
 
               <Typography
                 sx={{
-                  color:
-                    "#A1A1AA",
-
-                  fontSize: {
-                    xs: "0.9rem",
-                    sm: "0.95rem",
-                    md: "1rem",
-                  },
-
+                  color: "#A1A1AA",
+                  fontSize: { xs: "0.9rem", sm: "0.95rem", md: "1rem" },
                   lineHeight: 1.7,
-
                   maxWidth: 500,
                 }}
               >
-                Manage your portfolio,
-                projects, skills,
-                experience and visitor
-                messages from one place.
+                Manage your portfolio, projects, skills,
+                experience and visitor messages from one place.
               </Typography>
 
               <Box
                 sx={{
                   display: "flex",
                   gap: 1.5,
-                  flexWrap:
-                    "wrap",
+                  flexWrap: "wrap",
                   mt: 3,
                 }}
               >
                 <Button
                   variant="contained"
-                  onClick={() =>
-                    navigate(
-                      "/admin/projects"
-                    )
-                  }
+                  onClick={() => navigate("/admin/projects")}
                   sx={{
                     background:
                       "linear-gradient(90deg, #7C3AED, #6D28D9)",
-
                     px: 2.5,
-
                     "&:hover": {
                       background:
                         "linear-gradient(90deg, #6D28D9, #5B21B6)",
@@ -922,23 +765,14 @@ export default function AdminDashboard() {
 
                 <Button
                   variant="outlined"
-                  onClick={() =>
-                    navigate("/")
-                  }
+                  onClick={() => navigate("/")}
                   sx={{
                     color: "#fff",
-
-                    borderColor:
-                      "rgba(255,255,255,0.15)",
-
+                    borderColor: "rgba(255,255,255,0.15)",
                     px: 2.5,
-
                     "&:hover": {
-                      borderColor:
-                        "#06B6D4",
-
-                      background:
-                        "rgba(6,182,212,0.06)",
+                      borderColor: "#06B6D4",
+                      background: "rgba(6,182,212,0.06)",
                     },
                   }}
                 >
@@ -947,60 +781,20 @@ export default function AdminDashboard() {
               </Box>
             </Box>
 
-            {/* 3D */}
-
             <Box
               sx={{
-                position: {
-                  xs: "absolute",
-                  md: "relative",
-                },
-
-                right: {
-                  xs: "-45px",
-                  md: 0,
-                },
-
-                bottom: {
-                  xs: "-30px",
-                  md: "auto",
-                },
-
-                width: {
-                  xs: "280px",
-                  sm: "340px",
-                  md: "100%",
-                },
-
-                height: {
-                  xs: "250px",
-                  sm: "300px",
-                  md: "360px",
-                },
-
-                opacity: {
-                  xs: 0.65,
-                  md: 1,
-                },
+                position: { xs: "absolute", md: "relative" },
+                right: { xs: "-45px", md: 0 },
+                bottom: { xs: "-30px", md: "auto" },
+                width: { xs: "280px", sm: "340px", md: "100%" },
+                height: { xs: "250px", sm: "300px", md: "360px" },
+                opacity: { xs: 0.65, md: 1 },
               }}
             >
               <Canvas
-                camera={{
-                  position: [
-                    0,
-                    0,
-                    5,
-                  ],
-                  fov: 45,
-                }}
-                dpr={[
-                  1,
-                  1.5,
-                ]}
-                gl={{
-                  antialias: true,
-                  alpha: true,
-                }}
+                camera={{ position: [0, 0, 5], fov: 45 }}
+                dpr={[1, 1.5]}
+                gl={{ antialias: true, alpha: true }}
               >
                 <Admin3DScene />
               </Canvas>
@@ -1015,144 +809,85 @@ export default function AdminDashboard() {
                 mb: 3,
                 p: 2,
                 borderRadius: 2,
-                border:
-                  "1px solid rgba(248,113,113,0.3)",
-                background:
-                  "rgba(248,113,113,0.06)",
+                border: "1px solid rgba(248,113,113,0.3)",
+                background: "rgba(248,113,113,0.06)",
               }}
             >
               <Typography
-                sx={{
-                  color: "#F87171",
-                  fontSize:
-                    "0.85rem",
-                }}
+                sx={{ color: "#F87171", fontSize: "0.85rem" }}
               >
                 {error}
               </Typography>
+
+              {!token && (
+                <Button
+                  size="small"
+                  onClick={() => navigate("/admin/login")}
+                  sx={{ mt: 1, color: "#06B6D4" }}
+                >
+                  Go to Login
+                </Button>
+              )}
             </Box>
           )}
 
-          {/* =========================================
-              STATISTICS
-          ========================================= */}
+          {/* STATISTICS */}
 
           <Box
             sx={{
               display: "grid",
-
               gridTemplateColumns: {
-                xs: "1fr 1fr",
-                sm: "repeat(2, 1fr)",
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(2, minmax(0, 1fr))",
                 lg: "repeat(4, minmax(0, 1fr))",
                 xl: "repeat(5, minmax(0, 1fr))",
               },
-
-              gap: {
-                xs: 1.5,
-                sm: 2,
-                lg: 2.5,
-              },
-
+              gap: { xs: 1.5, sm: 2, lg: 2.5 },
               mb: 5,
             }}
           >
             {[
-              {
-                label: "Projects",
-                value:
-                  stats.projects,
-              },
-              {
-                label: "Skills",
-                value:
-                  stats.skills,
-              },
-              {
-                label: "Experience",
-                value:
-                  stats.experiences,
-              },
-              {
-                label: "Certificates",
-                value:
-                  stats.certificates,
-              },
-              {
-                label: "Messages",
-                value:
-                  stats.messages,
-              },
+              { label: "Projects", value: stats.projects },
+              { label: "Skills", value: stats.skills },
+              { label: "Experience", value: stats.experiences },
+              { label: "Certificates", value: stats.certificates },
+              { label: "Messages", value: stats.messages },
             ].map((item) => (
               <Card
                 key={item.label}
                 sx={{
+                  minWidth: 0,
                   background:
                     "linear-gradient(145deg, rgba(124,58,237,0.10), rgba(6,182,212,0.04))",
-
-                  border:
-                    "1px solid rgba(255,255,255,0.08)",
-
-                  transition:
-                    "0.25s ease",
-
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  transition: "0.25s ease",
                   "&:hover": {
-                    transform:
-                      "translateY(-3px)",
-                    borderColor:
-                      "rgba(124,58,237,0.4)",
+                    transform: "translateY(-3px)",
+                    borderColor: "rgba(124,58,237,0.4)",
                   },
                 }}
               >
-                <CardContent
-                  sx={{
-                    p: {
-                      xs: 2,
-                      sm: 2.5,
-                    },
-                  }}
-                >
+                <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
                   <Typography
-                    sx={{
-                      color:
-                        "#A1A1AA",
-                      fontSize:
-                        "0.78rem",
-                      mb: 1,
-                    }}
+                    sx={{ color: "#A1A1AA", fontSize: "0.78rem", mb: 1 }}
                   >
                     {item.label}
                   </Typography>
 
                   {loading ? (
-                    <CircularProgress
-                      size={24}
-                      sx={{
-                        color:
-                          "#7C3AED",
-                      }}
-                    />
+                    <CircularProgress size={24} sx={{ color: "#7C3AED" }} />
                   ) : (
                     <Typography
                       sx={{
-                        fontSize: {
-                          xs: "1.8rem",
-                          sm: "2.2rem",
-                        },
-
+                        fontSize: { xs: "1.8rem", sm: "2.2rem" },
                         fontWeight: 800,
-
                         background:
                           "linear-gradient(90deg, #7C3AED, #06B6D4)",
-
-                        WebkitBackgroundClip:
-                          "text",
-
-                        WebkitTextFillColor:
-                          "transparent",
+                        WebkitBackgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
                       }}
                     >
-                      {item.value}
+                      {item.value ?? 0}
                     </Typography>
                   )}
                 </CardContent>
@@ -1160,92 +895,50 @@ export default function AdminDashboard() {
             ))}
           </Box>
 
-          {/* =========================================
-              MESSAGE STATUS
-          ========================================= */}
+          {/* MESSAGE STATUS */}
 
           <Card
             sx={{
               mb: 5,
-
-              background:
-                "rgba(6,182,212,0.045)",
-
-              border:
-                "1px solid rgba(6,182,212,0.15)",
+              background: "rgba(6,182,212,0.045)",
+              border: "1px solid rgba(6,182,212,0.15)",
             }}
           >
-            <CardContent
-              sx={{
-                p: {
-                  xs: 2,
-                  sm: 2.5,
-                },
-              }}
-            >
+            <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               <Box
                 sx={{
                   display: "flex",
-                  alignItems:
-                    "center",
-                  justifyContent:
-                    "space-between",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   gap: 2,
-                  flexWrap:
-                    "wrap",
+                  flexWrap: "wrap",
                 }}
               >
                 <Box>
-                  <Typography
-                    sx={{
-                      fontSize:
-                        "1rem",
-                      fontWeight: 700,
-                    }}
-                  >
+                  <Typography sx={{ fontSize: "1rem", fontWeight: 700 }}>
                     Message Center
                   </Typography>
 
                   <Typography
-                    sx={{
-                      color:
-                        "#A1A1AA",
-                      fontSize:
-                        "0.82rem",
-                      mt: 0.5,
-                    }}
+                    sx={{ color: "#A1A1AA", fontSize: "0.82rem", mt: 0.5 }}
                   >
                     {loading
                       ? "Checking messages..."
-                      : `${stats.unreadMessages} unread message${
-                          stats.unreadMessages ===
-                          1
-                            ? ""
-                            : "s"
+                      : `${stats.unreadMessages ?? 0} unread message${
+                          stats.unreadMessages === 1 ? "" : "s"
                         }`}
                   </Typography>
                 </Box>
 
                 <Button
                   variant="outlined"
-                  onClick={() =>
-                    navigate(
-                      "/admin/messages"
-                    )
-                  }
+                  onClick={() => navigate("/admin/messages")}
                   sx={{
-                    color:
-                      "#06B6D4",
-
-                    borderColor:
-                      "rgba(6,182,212,0.35)",
-
+                    color: "#06B6D4",
+                    borderColor: "rgba(6,182,212,0.35)",
                     "&:hover": {
-                      borderColor:
-                        "#06B6D4",
-
-                      background:
-                        "rgba(6,182,212,0.06)",
+                      borderColor: "#06B6D4",
+                      background: "rgba(6,182,212,0.06)",
                     },
                   }}
                 >
@@ -1255,73 +948,45 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* =========================================
-              RECENT PROJECTS + MESSAGES
-          ========================================= */}
+          {/* RECENT PROJECTS AND MESSAGES */}
 
           <Box
             sx={{
               display: "grid",
-
               gridTemplateColumns: {
-                xs: "1fr",
-                lg: "1.15fr 0.85fr",
+                xs: "minmax(0, 1fr)",
+                lg: "minmax(0, 1.15fr) minmax(0, 0.85fr)",
               },
-
               gap: 3,
-
               mb: 5,
             }}
           >
-            {/* PROJECTS */}
+            {/* RECENT PROJECTS */}
 
             <Card
               sx={{
-                background:
-                  "rgba(255,255,255,0.035)",
-
-                border:
-                  "1px solid rgba(255,255,255,0.08)",
+                minWidth: 0,
+                background: "rgba(255,255,255,0.035)",
+                border: "1px solid rgba(255,255,255,0.08)",
               }}
             >
-              <CardContent
-                sx={{
-                  p: {
-                    xs: 2.5,
-                    sm: 3,
-                  },
-                }}
-              >
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
                 <Box
                   sx={{
                     display: "flex",
-                    justifyContent:
-                      "space-between",
-                    alignItems:
-                      "center",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                     mb: 3,
+                    gap: 1,
                   }}
                 >
                   <Box>
-                    <Typography
-                      sx={{
-                        fontSize:
-                          "1.2rem",
-                        fontWeight:
-                          700,
-                      }}
-                    >
+                    <Typography sx={{ fontSize: "1.2rem", fontWeight: 700 }}>
                       Recent Projects
                     </Typography>
 
                     <Typography
-                      sx={{
-                        color:
-                          "#71717A",
-                        fontSize:
-                          "0.78rem",
-                        mt: 0.5,
-                      }}
+                      sx={{ color: "#71717A", fontSize: "0.78rem", mt: 0.5 }}
                     >
                       Latest projects
                     </Typography>
@@ -1329,239 +994,145 @@ export default function AdminDashboard() {
 
                   <Button
                     size="small"
-                    onClick={() =>
-                      navigate(
-                        "/admin/projects"
-                      )
-                    }
-                    sx={{
-                      color:
-                        "#06B6D4",
-                    }}
+                    onClick={() => navigate("/admin/projects")}
+                    sx={{ color: "#06B6D4" }}
                   >
                     View All
                   </Button>
                 </Box>
 
                 {loading ? (
-                  <Box
-                    sx={{
-                      display:
-                        "flex",
-                      justifyContent:
-                        "center",
-                      py: 4,
-                    }}
-                  >
-                    <CircularProgress
-                      size={28}
-                      sx={{
-                        color:
-                          "#7C3AED",
-                      }}
-                    />
+                  <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                    <CircularProgress size={28} sx={{ color: "#7C3AED" }} />
                   </Box>
-                ) : recentProjects.length ===
-                  0 ? (
-                  <Typography
-                    sx={{
-                      color:
-                        "#71717A",
-                      py: 3,
-                    }}
-                  >
+                ) : recentProjects.length === 0 ? (
+                  <Typography sx={{ color: "#71717A", py: 3 }}>
                     No projects found.
                   </Typography>
                 ) : (
-                  recentProjects.map(
-                    (project) => (
-                      <Box
-                        key={
-                          project._id
-                        }
-                        onClick={() =>
-                          navigate(
-                            "/admin/projects"
-                          )
-                        }
-                        sx={{
-                          display:
-                            "flex",
-                          alignItems:
-                            "center",
-                          gap: 2,
-                          p: 1.5,
-                          mb: 1,
-                          borderRadius: 2,
-                          cursor:
-                            "pointer",
-
-                          "&:hover": {
-                            background:
-                              "rgba(124,58,237,0.08)",
-                          },
-                        }}
-                      >
-                        {project.image ? (
-                          <Box
-                            component="img"
-                            src={getImageUrl(
-                              project.image
-                            )}
-                            alt={
-                              project.title
-                            }
-                            sx={{
-                              width: 52,
-                              height: 52,
-                              borderRadius:
-                                "10px",
-                              objectFit:
-                                "cover",
-                              flexShrink: 0,
-                            }}
-                          />
-                        ) : (
-                          <Box
-                            sx={{
-                              width: 52,
-                              height: 52,
-                              borderRadius:
-                                "10px",
-                              flexShrink: 0,
-                              display:
-                                "flex",
-                              alignItems:
-                                "center",
-                              justifyContent:
-                                "center",
-                              background:
-                                "linear-gradient(135deg, #7C3AED, #06B6D4)",
-                              fontWeight:
-                                800,
-                            }}
-                          >
-                            P
-                          </Box>
-                        )}
-
+                  recentProjects.map((project) => (
+                    <Box
+                      key={project._id}
+                      onClick={() => navigate("/admin/projects")}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        p: 1.5,
+                        mb: 1,
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        minWidth: 0,
+                        "&:hover": {
+                          background: "rgba(124,58,237,0.08)",
+                        },
+                      }}
+                    >
+                      {project.image ? (
+                        <Box
+                          component="img"
+                          src={getImageUrl(project.image)}
+                          alt={project.title || "Project"}
+                          loading="lazy"
+                          sx={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: "10px",
+                            objectFit: "cover",
+                            flexShrink: 0,
+                          }}
+                        />
+                      ) : (
                         <Box
                           sx={{
-                            minWidth: 0,
-                            flex: 1,
+                            width: 52,
+                            height: 52,
+                            borderRadius: "10px",
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background:
+                              "linear-gradient(135deg, #7C3AED, #06B6D4)",
+                            fontWeight: 800,
                           }}
                         >
-                          <Typography
-                            sx={{
-                              fontSize:
-                                "0.9rem",
-                              fontWeight:
-                                700,
-                              whiteSpace:
-                                "nowrap",
-                              overflow:
-                                "hidden",
-                              textOverflow:
-                                "ellipsis",
-                            }}
-                          >
-                            {
-                              project.title
-                            }
-                          </Typography>
-
-                          <Typography
-                            sx={{
-                              color:
-                                "#71717A",
-                              fontSize:
-                                "0.72rem",
-                              mt: 0.4,
-                            }}
-                          >
-                            {project.category ||
-                              "Web Development"}
-                            {" • "}
-                            {formatDate(
-                              project.createdAt
-                            )}
-                          </Typography>
+                          P
                         </Box>
+                      )}
+
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography
+                          sx={{
+                            fontSize: "0.9rem",
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {project.title || "Untitled project"}
+                        </Typography>
 
                         <Typography
                           sx={{
-                            color:
-                              project.status ===
-                              "published"
-                                ? "#06B6D4"
-                                : "#71717A",
-                            fontSize:
-                              "0.65rem",
-                            fontWeight:
-                              700,
-                            textTransform:
-                              "uppercase",
+                            color: "#71717A",
+                            fontSize: "0.72rem",
+                            mt: 0.4,
                           }}
                         >
-                          {project.status ||
-                            "draft"}
+                          {project.category || "Web Development"}
+                          {" • "}
+                          {formatDate(project.createdAt)}
                         </Typography>
                       </Box>
-                    )
-                  )
+
+                      <Typography
+                        sx={{
+                          color:
+                            project.status === "published"
+                              ? "#06B6D4"
+                              : "#71717A",
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {project.status || "draft"}
+                      </Typography>
+                    </Box>
+                  ))
                 )}
               </CardContent>
             </Card>
 
-            {/* MESSAGES */}
+            {/* RECENT MESSAGES */}
 
             <Card
               sx={{
-                background:
-                  "rgba(255,255,255,0.035)",
-
-                border:
-                  "1px solid rgba(255,255,255,0.08)",
+                minWidth: 0,
+                background: "rgba(255,255,255,0.035)",
+                border: "1px solid rgba(255,255,255,0.08)",
               }}
             >
-              <CardContent
-                sx={{
-                  p: {
-                    xs: 2.5,
-                    sm: 3,
-                  },
-                }}
-              >
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
                 <Box
                   sx={{
                     display: "flex",
-                    justifyContent:
-                      "space-between",
-                    alignItems:
-                      "center",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                     mb: 3,
+                    gap: 1,
                   }}
                 >
                   <Box>
-                    <Typography
-                      sx={{
-                        fontSize:
-                          "1.2rem",
-                        fontWeight:
-                          700,
-                      }}
-                    >
+                    <Typography sx={{ fontSize: "1.2rem", fontWeight: 700 }}>
                       Recent Messages
                     </Typography>
 
                     <Typography
-                      sx={{
-                        color:
-                          "#71717A",
-                        fontSize:
-                          "0.78rem",
-                        mt: 0.5,
-                      }}
+                      sx={{ color: "#71717A", fontSize: "0.78rem", mt: 0.5 }}
                     >
                       Latest visitors
                     </Typography>
@@ -1569,179 +1140,103 @@ export default function AdminDashboard() {
 
                   <Button
                     size="small"
-                    onClick={() =>
-                      navigate(
-                        "/admin/messages"
-                      )
-                    }
-                    sx={{
-                      color:
-                        "#06B6D4",
-                    }}
+                    onClick={() => navigate("/admin/messages")}
+                    sx={{ color: "#06B6D4" }}
                   >
                     View All
                   </Button>
                 </Box>
 
                 {loading ? (
-                  <Box
-                    sx={{
-                      display:
-                        "flex",
-                      justifyContent:
-                        "center",
-                      py: 4,
-                    }}
-                  >
-                    <CircularProgress
-                      size={28}
-                      sx={{
-                        color:
-                          "#06B6D4",
-                      }}
-                    />
+                  <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                    <CircularProgress size={28} sx={{ color: "#06B6D4" }} />
                   </Box>
-                ) : recentMessages.length ===
-                  0 ? (
-                  <Typography
-                    sx={{
-                      color:
-                        "#71717A",
-                      py: 3,
-                    }}
-                  >
+                ) : recentMessages.length === 0 ? (
+                  <Typography sx={{ color: "#71717A", py: 3 }}>
                     No messages found.
                   </Typography>
                 ) : (
-                  recentMessages.map(
-                    (message) => (
+                  recentMessages.map((message) => (
+                    <Box
+                      key={message._id}
+                      onClick={() => navigate("/admin/messages")}
+                      sx={{
+                        p: 1.5,
+                        mb: 1,
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        "&:hover": {
+                          background: "rgba(6,182,212,0.06)",
+                        },
+                      }}
+                    >
                       <Box
-                        key={
-                          message._id
-                        }
-                        onClick={() =>
-                          navigate(
-                            "/admin/messages"
-                          )
-                        }
                         sx={{
-                          p: 1.5,
-                          mb: 1,
-                          borderRadius: 2,
-                          cursor:
-                            "pointer",
-
-                          "&:hover": {
-                            background:
-                              "rgba(6,182,212,0.06)",
-                          },
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 1,
                         }}
                       >
-                        <Box
-                          sx={{
-                            display:
-                              "flex",
-                            justifyContent:
-                              "space-between",
-                            gap: 1,
-                          }}
-                        >
-                          <Box
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography
                             sx={{
-                              minWidth: 0,
+                              fontSize: "0.85rem",
+                              fontWeight: 700,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
                             }}
                           >
-                            <Typography
-                              sx={{
-                                fontSize:
-                                  "0.85rem",
-                                fontWeight:
-                                  700,
-                                whiteSpace:
-                                  "nowrap",
-                                overflow:
-                                  "hidden",
-                                textOverflow:
-                                  "ellipsis",
-                              }}
-                            >
-                              {
-                                message.name
-                              }
-                            </Typography>
-
-                            <Typography
-                              sx={{
-                                color:
-                                  "#A1A1AA",
-                                fontSize:
-                                  "0.75rem",
-                                mt: 0.3,
-                                whiteSpace:
-                                  "nowrap",
-                                overflow:
-                                  "hidden",
-                                textOverflow:
-                                  "ellipsis",
-                              }}
-                            >
-                              {message.subject ||
-                                "No subject"}
-                            </Typography>
-                          </Box>
+                            {message.name || "Visitor"}
+                          </Typography>
 
                           <Typography
                             sx={{
-                              color:
-                                message.status ===
-                                "unread"
-                                  ? "#06B6D4"
-                                  : "#52525B",
-                              fontSize:
-                                "0.65rem",
-                              fontWeight:
-                                700,
-                              textTransform:
-                                "uppercase",
-                              flexShrink: 0,
+                              color: "#A1A1AA",
+                              fontSize: "0.75rem",
+                              mt: 0.3,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
                             }}
                           >
-                            {message.status ||
-                              "read"}
+                            {message.subject || "No subject"}
                           </Typography>
                         </Box>
 
                         <Typography
                           sx={{
                             color:
-                              "#52525B",
-                            fontSize:
-                              "0.68rem",
-                            mt: 0.8,
+                              message.status === "unread"
+                                ? "#06B6D4"
+                                : "#52525B",
+                            fontSize: "0.65rem",
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            flexShrink: 0,
                           }}
                         >
-                          {formatDate(
-                            message.createdAt
-                          )}
+                          {message.status || "read"}
                         </Typography>
                       </Box>
-                    )
-                  )
+
+                      <Typography
+                        sx={{ color: "#52525B", fontSize: "0.68rem", mt: 0.8 }}
+                      >
+                        {formatDate(message.createdAt)}
+                      </Typography>
+                    </Box>
+                  ))
                 )}
               </CardContent>
             </Card>
           </Box>
 
-          {/* =========================================
-              MANAGEMENT
-          ========================================= */}
+          {/* MANAGEMENT CARDS */}
 
           <Typography
             sx={{
-              fontSize: {
-                xs: "1.4rem",
-                sm: "1.6rem",
-              },
+              fontSize: { xs: "1.4rem", sm: "1.6rem" },
               fontWeight: 700,
               mb: 2.5,
             }}
@@ -1752,170 +1247,98 @@ export default function AdminDashboard() {
           <Box
             sx={{
               display: "grid",
-
               gridTemplateColumns: {
-                xs: "1fr",
-                sm: "repeat(2, 1fr)",
-                lg: "repeat(3, 1fr)",
+                xs: "minmax(0, 1fr)",
+                sm: "repeat(2, minmax(0, 1fr))",
+                lg: "repeat(3, minmax(0, 1fr))",
               },
-
-              gap: {
-                xs: 2,
-                sm: 2.5,
-                lg: 3,
-              },
+              gap: { xs: 2, sm: 2.5, lg: 3 },
             }}
           >
-            {dashboardCards.map(
-              (card) => (
-                <Card
-                  key={card.path}
-                  onClick={() =>
-                    navigate(
-                      card.path
-                    )
-                  }
-                  sx={{
-                    cursor:
-                      "pointer",
-
-                    background:
-                      "rgba(255,255,255,0.035)",
-
-                    border:
-                      "1px solid rgba(255,255,255,0.08)",
-
-                    transition:
-                      "all 0.25s ease",
-
-                    "&:hover": {
-                      transform:
-                        "translateY(-5px)",
-
-                      borderColor:
-                        "rgba(124,58,237,0.5)",
-
-                      background:
-                        "rgba(124,58,237,0.06)",
-                    },
-                  }}
-                >
-                  <CardContent
+            {dashboardCards.map((card) => (
+              <Card
+                key={card.path}
+                onClick={() => navigate(card.path)}
+                sx={{
+                  cursor: "pointer",
+                  minWidth: 0,
+                  background: "rgba(255,255,255,0.035)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  transition: "all 0.25s ease",
+                  "&:hover": {
+                    transform: "translateY(-5px)",
+                    borderColor: "rgba(124,58,237,0.5)",
+                    background: "rgba(124,58,237,0.06)",
+                  },
+                }}
+              >
+                <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+                  <Box
                     sx={{
-                      p: {
-                        xs: 2.5,
-                        sm: 3,
-                      },
+                      width: 44,
+                      height: 44,
+                      borderRadius: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mb: 2,
+                      fontSize: card.symbol.length > 1 ? "0.68rem" : "0.9rem",
+                      fontWeight: 800,
+                      background:
+                        "linear-gradient(135deg, #7C3AED, #06B6D4)",
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: 44,
-                        height: 44,
-                        borderRadius:
-                          "12px",
+                    {card.symbol}
+                  </Box>
 
-                        display:
-                          "flex",
+                  <Typography
+                    sx={{ fontSize: "1.1rem", fontWeight: 700, mb: 1 }}
+                  >
+                    {card.title}
+                  </Typography>
 
-                        alignItems:
-                          "center",
+                  <Typography
+                    sx={{
+                      color: "#A1A1AA",
+                      fontSize: "0.85rem",
+                      lineHeight: 1.65,
+                    }}
+                  >
+                    {card.description}
+                  </Typography>
 
-                        justifyContent:
-                          "center",
-
-                        mb: 2,
-
-                        fontSize:
-                          card.symbol
-                            .length > 1
-                            ? "0.68rem"
-                            : "0.9rem",
-
-                        fontWeight:
-                          800,
-
-                        background:
-                          "linear-gradient(135deg, #7C3AED, #06B6D4)",
-                      }}
-                    >
-                      {
-                        card.symbol
-                      }
-                    </Box>
-
-                    <Typography
-                      sx={{
-                        fontSize:
-                          "1.1rem",
-                        fontWeight:
-                          700,
-                        mb: 1,
-                      }}
-                    >
-                      {
-                        card.title
-                      }
-                    </Typography>
-
-                    <Typography
-                      sx={{
-                        color:
-                          "#A1A1AA",
-                        fontSize:
-                          "0.85rem",
-                        lineHeight:
-                          1.65,
-                      }}
-                    >
-                      {
-                        card.description
-                      }
-                    </Typography>
-
-                    <Typography
-                      sx={{
-                        mt: 2.5,
-                        color:
-                          "#06B6D4",
-                        fontSize:
-                          "0.78rem",
-                        fontWeight:
-                          700,
-                      }}
-                    >
-                      Manage →
-                    </Typography>
-                  </CardContent>
-                </Card>
-              )
-            )}
+                  <Typography
+                    sx={{
+                      mt: 2.5,
+                      color: "#06B6D4",
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Manage →
+                  </Typography>
+                </CardContent>
+              </Card>
+            ))}
           </Box>
 
-          {/* Footer */}
+          {/* FOOTER */}
 
           <Box
             sx={{
               mt: 6,
               pt: 3,
-              borderTop:
-                "1px solid rgba(255,255,255,0.07)",
+              borderTop: "1px solid rgba(255,255,255,0.07)",
             }}
           >
             <Typography
               sx={{
-                color:
-                  "#52525B",
-                fontSize:
-                  "0.75rem",
-                textAlign: {
-                  xs: "center",
-                  md: "left",
-                },
+                color: "#52525B",
+                fontSize: "0.75rem",
+                textAlign: { xs: "center", md: "left" },
               }}
             >
-              Portfolio Admin
-              Panel • Daniyal
+              Portfolio Admin Panel • Daniyal
             </Typography>
           </Box>
         </Container>

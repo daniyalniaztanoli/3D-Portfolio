@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 
-const API_URL = "http://localhost:5000/api/experiences";
+const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/experiences";
 
 export default function ExperienceSection() {
   const [experiences, setExperiences] = useState([]);
@@ -586,7 +586,7 @@ export default function ExperienceSection() {
                                 "http"
                               )
                                 ? experience.companyLogo
-                                : `http://localhost:5000${experience.companyLogo}`
+                                : `https://hearty-friendship-production-fec3.up.railway.app${experience.companyLogo}`
                             }
                             alt={
                               experience.company ||

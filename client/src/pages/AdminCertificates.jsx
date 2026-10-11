@@ -20,8 +20,8 @@ import {
   Typography,
 } from "@mui/material";
 
-const API_URL = "http://localhost:5000/api/certificates";
-const SERVER_URL = "http://localhost:5000";
+const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/certificates";
+const SERVER_URL = "https://hearty-friendship-production-fec3.up.railway.app";
 
 const emptyForm = {
   title: "",

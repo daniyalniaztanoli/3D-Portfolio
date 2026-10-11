@@ -16,8 +16,8 @@ import {
   Typography,
 } from "@mui/material";
 
-const API_URL = "http://localhost:5000/api/profile";
-const SERVER_URL = "http://localhost:5000";
+const API_URL = "https://hearty-friendship-production-fec3.up.railway.app/api/profile";
+const SERVER_URL = "https://hearty-friendship-production-fec3.up.railway.app";
 
 const initialForm = {
   name: "",

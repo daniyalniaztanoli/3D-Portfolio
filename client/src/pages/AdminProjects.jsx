@@ -31,7 +31,7 @@ function AdminProjects() {
   const fetchProjects = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/projects"
+        "https://hearty-friendship-production-fec3.up.railway.app/api/projects"
       );
 
       setProjects(response.data.projects);
@@ -146,7 +146,7 @@ function AdminProjects() {
 
       if (editingId) {
         await axios.put(
-          `http://localhost:5000/api/projects/${editingId}`,
+          `https://hearty-friendship-production-fec3.up.railway.app/api/projects/${editingId}`,
           formData,
           {
             headers: {
@@ -164,7 +164,7 @@ function AdminProjects() {
 
       else {
         await axios.post(
-          "http://localhost:5000/api/projects",
+          "https://hearty-friendship-production-fec3.up.railway.app/api/projects",
           formData,
           {
             headers: {
@@ -216,7 +216,7 @@ function AdminProjects() {
 
     if (project.image) {
       setImagePreview(
-        `http://localhost:5000${project.image}`
+        `https://hearty-friendship-production-fec3.up.railway.app${project.image}`
       );
     } else {
       setImagePreview("");
@@ -253,7 +253,7 @@ function AdminProjects() {
       const token = localStorage.getItem("adminToken");
 
       await axios.delete(
-        `http://localhost:5000/api/projects/${projectId}`,
+        `https://hearty-friendship-production-fec3.up.railway.app/api/projects/${projectId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -569,7 +569,7 @@ function AdminProjects() {
 
             {project.image && (
               <img
-                src={`http://localhost:5000${project.image}`}
+                src={`https://hearty-friendship-production-fec3.up.railway.app${project.image}`}
                 alt={project.title}
                 style={{
                   width: "250px",
