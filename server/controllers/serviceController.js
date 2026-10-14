@@ -101,6 +101,10 @@ const createService = async (req, res) => {
       ? req.file.path
       : serviceData.image || "";
 
+    // Normalize status: published->active, draft->inactive
+    if (serviceData.status === "published") serviceData.status = "active";
+    if (serviceData.status === "draft") serviceData.status = "inactive";
+
     const service = await Service.create(serviceData);
 
     return res.status(201).json({
@@ -166,6 +170,10 @@ const updateService = async (req, res) => {
     if (req.file) {
       updateData.image = req.file.path;
     }
+
+    // Normalize status: published->active, draft->inactive
+    if (updateData.status === "published") updateData.status = "active";
+    if (updateData.status === "draft") updateData.status = "inactive";
 
     const service = await Service.findByIdAndUpdate(
       req.params.id,
