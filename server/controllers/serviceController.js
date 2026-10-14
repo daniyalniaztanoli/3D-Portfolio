@@ -109,9 +109,14 @@ const createService = async (req, res) => {
       service,
     });
   } catch (error) {
-    console.error("Create Service Error:", error);
+    console.error("Create Service Error FULL:", JSON.stringify({
+      message: error.message,
+      stack: error.stack,
+      body: req.body,
+      file: req.file,
+    }));
 
-    return res.status(400).json({
+    return res.status(500).json({
       success: false,
       message: error.message || "Failed to create service",
     });
