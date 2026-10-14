@@ -3,10 +3,14 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY server/package*.json ./
+COPY package*.json ./
 
 RUN npm install --omit=dev
 
-COPY server/ .
+COPY . .
+
+RUN rm -f .env
+
+EXPOSE 5000
 
 CMD ["npm", "start"]

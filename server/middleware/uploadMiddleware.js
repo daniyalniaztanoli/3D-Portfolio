@@ -1,78 +1,44 @@
-
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("../config/cloudinary");
 
-const uploadDirectory = path.join(__dirname, "..", "uploads");
-
-// Create uploads folder if it doesn't exist
-if (!fs.existsSync(uploadDirectory)) {
-  fs.mkdirSync(uploadDirectory, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDirectory);
-  },
-
-  filename: (req, file, cb) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-
-    const uniqueName =
-      Date.now() +
-      "-" +
-      Math.round(Math.random() * 1e9) +
-      extension;
-
-    cb(null, uniqueName);
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: (req, file) => {
+    const isImage = file.fieldname !== "resume";
+    return {
+      folder: "portfolio",
+      resource_type: isImage ? "image" : "raw",
+      allowed_formats: isImage
+        ? ["jpg", "jpeg", "png", "webp"]
+        : ["pdf"],
+    };
   },
 });
 
-const imageTypes = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-];
-
 const fileFilter = (req, file, cb) => {
-  const extension = path.extname(file.originalname).toLowerCase();
+  const imageFields = ["profileImage", "image"];
+  const imageTypes = ["image/jpeg", "image/png", "image/webp"];
 
-  // Profile image validation
-  if (file.fieldname === "profileImage") {
-    if (
-      imageTypes.includes(file.mimetype) &&
-      [".jpg", ".jpeg", ".png", ".webp"].includes(extension)
-    ) {
-      return cb(null, true);
-    }
-
-    return cb(
-      new Error("Profile image must be JPG, JPEG, PNG or WEBP.")
-    );
+  if (imageFields.includes(file.fieldname)) {
+    return imageTypes.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error("Image must be JPG, PNG or WEBP."));
   }
 
-  // CV PDF validation
   if (file.fieldname === "resume") {
-    if (
-      file.mimetype === "application/pdf" &&
-      extension === ".pdf"
-    ) {
-      return cb(null, true);
-    }
-
-    return cb(new Error("CV must be uploaded as a PDF file."));
+    return file.mimetype === "application/pdf"
+      ? cb(null, true)
+      : cb(new Error("CV must be a PDF file."));
   }
 
-  return cb(new Error("Unsupported file field."));
+  cb(new Error("Unsupported file field."));
 };
 
 const upload = multer({
   storage,
   fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-    files: 2,
-  },
+  limits: { fileSize: 5 * 1024 * 1024, files: 2 },
 });
 
 module.exports = upload;
