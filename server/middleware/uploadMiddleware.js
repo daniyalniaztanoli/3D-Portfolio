@@ -1,49 +1,46 @@
 const multer = require("multer");
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("../config/cloudinary");
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: (req, file) => {
-    const isImage = file.fieldname !== "resume";
-    return {
-      folder: "portfolio",
-      resource_type: isImage ? "image" : "raw",
-      allowed_formats: isImage
-        ? ["jpg", "jpeg", "png", "webp"]
-        : ["pdf"],
-    };
-  },
+const memUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-const fileFilter = (req, file, cb) => {
-  const imageTypes = ["image/jpeg", "image/png", "image/webp"];
-  const imageFields = ["profileImage", "image"];
+const toCloudinary = (buffer, fieldname) =>
+  new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "portfolio",
+        resource_type: fieldname === "resume" ? "raw" : "image",
+      },
+      (err, result) => (err ? reject(err) : resolve(result))
+    );
+    stream.end(buffer);
+  });
 
-  if (imageFields.includes(file.fieldname)) {
-    return imageTypes.includes(file.mimetype)
-      ? cb(null, true)
-      : cb(new Error("Image must be JPG, PNG or WEBP."));
+const afterUpload = async (req, res, next) => {
+  try {
+    if (req.file) {
+      const result = await toCloudinary(req.file.buffer, req.file.fieldname);
+      req.file.path = result.secure_url;
+    }
+    if (req.files) {
+      for (const [fieldname, files] of Object.entries(req.files)) {
+        for (const file of files) {
+          const result = await toCloudinary(file.buffer, fieldname);
+          file.path = result.secure_url;
+        }
+      }
+    }
+    next();
+  } catch (err) {
+    next(err);
   }
-
-  if (file.fieldname === "resume") {
-    return file.mimetype === "application/pdf"
-      ? cb(null, true)
-      : cb(new Error("CV must be a PDF file."));
-  }
-
-  // Koi bhi image field accept karo (certificate, about, etc.)
-  if (imageTypes.includes(file.mimetype)) {
-    return cb(null, true);
-  }
-
-  cb(null, true);
 };
 
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024, files: 2 },
-});
+const upload = {
+  single: (field) => [memUpload.single(field), afterUpload],
+  fields: (fields) => [memUpload.fields(fields), afterUpload],
+};
 
 module.exports = upload;
