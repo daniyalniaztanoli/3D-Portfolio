@@ -74,7 +74,7 @@ const createExperience = async (req, res) => {
         req.body.currentlyWorking === "true",
 
       companyLogo: req.file
-        ? `/uploads/${req.file.filename}`
+        ? req.file.path
         : "",
     };
 
@@ -131,8 +131,7 @@ const updateExperience = async (req, res) => {
 
     // New company logo upload
     if (req.file) {
-      updateData.companyLogo =
-        `/uploads/${req.file.filename}`;
+      updateData.companyLogo = req.file.path;
     }
 
     const experience =

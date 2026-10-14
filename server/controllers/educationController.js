@@ -74,7 +74,7 @@ const createEducation = async (req, res) => {
         req.body.currentlyStudying === "true",
 
       institutionLogo: req.file
-        ? `/uploads/${req.file.filename}`
+        ? req.file.path
         : "",
     };
 
@@ -131,8 +131,7 @@ const updateEducation = async (req, res) => {
 
     // New institution logo
     if (req.file) {
-      updateData.institutionLogo =
-        `/uploads/${req.file.filename}`;
+      updateData.institutionLogo = req.file.path;
     }
 
     const education =

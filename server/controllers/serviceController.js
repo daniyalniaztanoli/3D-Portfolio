@@ -96,7 +96,7 @@ const createService = async (req, res) => {
     }
 
     serviceData.image = req.file
-      ? `/uploads/${req.file.filename}`
+      ? req.file.path
       : serviceData.image || "";
 
     const service = await Service.create(serviceData);
@@ -157,7 +157,7 @@ const updateService = async (req, res) => {
     delete updateData.image;
 
     if (req.file) {
-      updateData.image = `/uploads/${req.file.filename}`;
+      updateData.image = req.file.path;
     }
 
     const service = await Service.findByIdAndUpdate(

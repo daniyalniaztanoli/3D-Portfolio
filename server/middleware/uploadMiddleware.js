@@ -17,8 +17,8 @@ const storage = new CloudinaryStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const imageFields = ["profileImage", "image"];
   const imageTypes = ["image/jpeg", "image/png", "image/webp"];
+  const imageFields = ["profileImage", "image"];
 
   if (imageFields.includes(file.fieldname)) {
     return imageTypes.includes(file.mimetype)
@@ -32,7 +32,12 @@ const fileFilter = (req, file, cb) => {
       : cb(new Error("CV must be a PDF file."));
   }
 
-  cb(new Error("Unsupported file field."));
+  // Koi bhi image field accept karo (certificate, about, etc.)
+  if (imageTypes.includes(file.mimetype)) {
+    return cb(null, true);
+  }
+
+  cb(null, true);
 };
 
 const upload = multer({
