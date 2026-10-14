@@ -24,7 +24,7 @@ const emptyForm = {
   icon: "",
   features: "",
   order: 0,
-  status: "published",
+  status: "active",
 };
 
 function AdminServices() {
@@ -120,7 +120,7 @@ function AdminServices() {
       icon: service.icon || "",
       features: existingFeatures,
       order: service.order ?? 0,
-      status: service.status || "published",
+      status: service.status || "active",
     });
 
     setImageFile(null);
@@ -621,9 +621,9 @@ function AdminServices() {
                       <Chip
                         label={
                           service.status ===
-                          "draft"
-                            ? "Draft"
-                            : "Published"
+                          "inactive"
+                            ? "Inactive"
+                            : "Active"
                         }
                         size="small"
                         sx={{
@@ -633,12 +633,12 @@ function AdminServices() {
                             "0.68rem",
                           color:
                             service.status ===
-                            "draft"
+                            "inactive"
                               ? "#F59E0B"
                               : "#10B981",
                           background:
                             service.status ===
-                            "draft"
+                            "inactive"
                               ? "rgba(245,158,11,0.1)"
                               : "rgba(16,185,129,0.1)",
                         }}
@@ -874,12 +874,12 @@ function AdminServices() {
                 value={form.status}
                 onChange={handleChange}
               >
-                <MenuItem value="published">
-                  Published
+                <MenuItem value="active">
+                  Active
                 </MenuItem>
 
-                <MenuItem value="draft">
-                  Draft
+                <MenuItem value="inactive">
+                  Inactive
                 </MenuItem>
               </TextField>
             </Box>
