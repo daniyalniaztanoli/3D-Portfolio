@@ -4,25 +4,27 @@ const Service = require("../models/Service");
 const parseFeatures = (value) => {
   if (value === undefined) return undefined;
 
+  // FormData multiple append -> array
   if (Array.isArray(value)) {
-    return value.map((feature) => String(feature).trim()).filter(Boolean);
+    return value.map((f) => String(f).trim()).filter(Boolean);
   }
 
-  if (typeof value !== "string") {
-    throw new Error("Features must be an array or JSON string");
-  }
+  if (typeof value !== "string") return [];
 
   const trimmed = value.trim();
-
   if (!trimmed) return [];
 
-  const parsed = JSON.parse(trimmed);
-
-  if (!Array.isArray(parsed)) {
-    throw new Error("Features must be a JSON array");
+  // Try JSON parse first
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.map((f) => String(f).trim()).filter(Boolean);
+    }
+  } catch {
+    // Not JSON — treat as plain string (single feature)
   }
 
-  return parsed.map((feature) => String(feature).trim()).filter(Boolean);
+  return [trimmed].filter(Boolean);
 };
 
 // GET all services
